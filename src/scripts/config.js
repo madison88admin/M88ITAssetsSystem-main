@@ -8,8 +8,8 @@
  * Update the Supabase credentials below with your own.
  */
 
-// Import Supabase from CDN (loaded via importmap or global)
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Import Supabase from npm package (bundled by Vite, not exposed as separate CDN source)
+import { createClient } from '@supabase/supabase-js';
 
 // ===========================================
 // SUPABASE CONFIGURATION

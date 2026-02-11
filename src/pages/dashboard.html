@@ -13,13 +13,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vendor Libraries (bundled from npm) -->
+    <script type="module" src="../scripts/vendor-chart.js"></script>
     
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    
-    <!-- Custom Styles -->
+    <!-- Custom Styles (includes Tailwind via build) -->
     <link rel="stylesheet" href="../styles/styles.css">
     
     <!-- Application Modules -->
@@ -215,7 +212,7 @@
                 <!-- Stats Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                     <!-- Available Assets -->
-                    <div class="stat-card bg-gradient-to-br from-blue-600 to-blue-700">
+                    <div class="stat-card bg-linear-to-br from-blue-600 to-blue-700">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-blue-200 text-sm font-medium">Available Assets</p>
@@ -233,7 +230,7 @@
                     </div>
 
                     <!-- Assigned Assets -->
-                    <div class="stat-card bg-gradient-to-br from-green-600 to-green-700">
+                    <div class="stat-card bg-linear-to-br from-green-600 to-green-700">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-green-200 text-sm font-medium">Assigned</p>
@@ -249,7 +246,7 @@
                     </div>
 
                     <!-- Under Repair -->
-                    <div class="stat-card bg-gradient-to-br from-yellow-600 to-yellow-700">
+                    <div class="stat-card bg-linear-to-br from-yellow-600 to-yellow-700">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-yellow-200 text-sm font-medium">Under Repair</p>
@@ -266,7 +263,7 @@
                     </div>
 
                     <!-- Issues -->
-                    <div class="stat-card bg-gradient-to-br from-red-600 to-red-700">
+                    <div class="stat-card bg-linear-to-br from-red-600 to-red-700">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-red-200 text-sm font-medium">Issues</p>
@@ -282,7 +279,7 @@
                     </div>
 
                     <!-- Decommissioned -->
-                    <div class="stat-card bg-gradient-to-br from-gray-600 to-gray-700">
+                    <div class="stat-card bg-linear-to-br from-gray-600 to-gray-700">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-gray-200 text-sm font-medium">Decommissioned</p>

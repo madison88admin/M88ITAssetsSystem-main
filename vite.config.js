@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   // Project root directory
@@ -7,6 +8,11 @@ export default defineConfig({
 
   // Static assets directory (served at /)
   publicDir: 'public',
+
+  // Plugins
+  plugins: [
+    tailwindcss(),
+  ],
 
   // Dev server configuration
   server: {
@@ -17,6 +23,21 @@ export default defineConfig({
   // Build configuration for multi-page app
   build: {
     outDir: 'dist',
+
+    // SECURITY: Disable source maps in production so original source code
+    // is NOT visible in browser DevTools
+    sourcemap: false,
+
+    // Minify the output to make code harder to read
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,   // Remove console.log statements
+        drop_debugger: true,  // Remove debugger statements
+      },
+      mangle: true,           // Mangle variable/function names
+    },
+
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
