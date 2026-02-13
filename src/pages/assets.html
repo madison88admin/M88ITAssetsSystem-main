@@ -69,7 +69,7 @@
                 </div>
                 
                 <!-- Asset Management -->
-                <div class="nav-section">
+                <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
                     <a href="assets.html" class="nav-link active">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,7 +92,7 @@
                 </div>
                 
                 <!-- Tracking -->
-                <div class="nav-section">
+                <div class="nav-section" id="tracking-nav">
                     <p class="nav-section-title">Tracking</p>
                     <a href="maintenance.html" class="nav-link">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -519,17 +519,11 @@
                 Auth.user = session.user;
                 Auth.profile = profile;
 
-                // Show/hide admin nav
-                if (currentUser.role !== 'admin') {
-                    const adminNav = document.getElementById('admin-nav');
-                    if (adminNav) adminNav.classList.add('hidden');
-                }
+                // Setup navigation visibility based on role and permissions
+                await Utils.setupNavigation(currentUser, supabase);
                 
-                // Handle reports navigation visibility based on permission
-                await Utils.handleReportsNavVisibility(currentUser, supabase);
-                
-                // Redirect viewers to dashboard - they should only see dashboard
-                if (currentUser.role === 'viewer') {
+                // Redirect viewers and executives to dashboard
+                if (currentUser.role === 'viewer' || currentUser.role === 'executive') {
                     window.location.href = 'dashboard.html';
                     return;
                 }
@@ -696,6 +690,10 @@
                 let query = supabase
                     .from('v_assets_full')
                     .select('*', { count: 'exact' });
+
+                // Apply region filter
+                const regionId = Auth.getRegionId();
+                if (regionId) query = query.eq('region_id', regionId);
 
                 // Apply search
                 if (searchTerm) {
@@ -1423,10 +1421,13 @@
             try {
                 showLoadingModal('Exporting Assets', 'Preparing data for export...');
                 
-                const { data: assets } = await supabase
+                let exportQuery = supabase
                     .from('v_assets_full')
                     .select('*')
                     .order('created_at', { ascending: false });
+                const regionId = Auth.getRegionId();
+                if (regionId) exportQuery = exportQuery.eq('region_id', regionId);
+                const { data: assets } = await exportQuery;
 
                 document.getElementById('loading-message').textContent = 'Generating Excel file...';
                 

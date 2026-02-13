@@ -39,13 +39,13 @@
                     <p class="nav-section-title">Main</p>
                     <a href="dashboard.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
                 </div>
-                <div class="nav-section">
+                <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
                     <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>Assets</a>
                     <a href="employees.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Employees</a>
                     <a href="assignments.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Assignments</a>
                 </div>
-                <div class="nav-section">
+                <div class="nav-section" id="tracking-nav">
                     <p class="nav-section-title">Tracking</p>
                     <a href="maintenance.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Maintenance</a>
                     <a href="lost-assets.html" class="nav-link">
@@ -241,16 +241,11 @@
             document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
             document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
             
-            // Hide admin-only navigation for non-admin users
-            if (currentUser.role !== 'admin') {
-                document.getElementById('admin-nav').classList.add('hidden');
-            }
+            // Setup navigation visibility based on role and permissions
+            await Utils.setupNavigation(currentUser, supabase);
             
-            // Handle reports navigation visibility based on permission
-            await Utils.handleReportsNavVisibility(currentUser, supabase);
-            
-            // Redirect viewers to dashboard - they should only see dashboard
-            if (currentUser.role === 'viewer') {
+            // Redirect viewers and executives to dashboard
+            if (currentUser.role === 'viewer' || currentUser.role === 'executive') {
                 window.location.href = 'dashboard.html';
                 return;
             }
@@ -268,11 +263,23 @@
         async function loadStats() {
             const today = new Date().toISOString().split('T')[0];
             const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const regionId = Auth.getRegionId();
 
-            const { count: total } = await supabase.from('software_licenses').select('*', { count: 'exact', head: true });
-            const { count: active } = await supabase.from('software_licenses').select('*', { count: 'exact', head: true }).or(`expiry_date.is.null,expiry_date.gt.${today}`);
-            const { count: expiring } = await supabase.from('software_licenses').select('*', { count: 'exact', head: true }).gte('expiry_date', today).lte('expiry_date', thirtyDays);
-            const { count: expired } = await supabase.from('software_licenses').select('*', { count: 'exact', head: true }).lt('expiry_date', today);
+            let totalQ = supabase.from('software_licenses').select('*', { count: 'exact', head: true });
+            if (regionId) totalQ = totalQ.eq('region_id', regionId);
+            const { count: total } = await totalQ;
+
+            let activeQ = supabase.from('software_licenses').select('*', { count: 'exact', head: true }).or(`expiry_date.is.null,expiry_date.gt.${today}`);
+            if (regionId) activeQ = activeQ.eq('region_id', regionId);
+            const { count: active } = await activeQ;
+
+            let expiringQ = supabase.from('software_licenses').select('*', { count: 'exact', head: true }).gte('expiry_date', today).lte('expiry_date', thirtyDays);
+            if (regionId) expiringQ = expiringQ.eq('region_id', regionId);
+            const { count: expiring } = await expiringQ;
+
+            let expiredQ = supabase.from('software_licenses').select('*', { count: 'exact', head: true }).lt('expiry_date', today);
+            if (regionId) expiredQ = expiredQ.eq('region_id', regionId);
+            const { count: expired } = await expiredQ;
 
             document.getElementById('stat-total').textContent = total || 0;
             document.getElementById('stat-active').textContent = active || 0;
@@ -285,6 +292,9 @@
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">Loading...</td></tr>';
 
             let query = supabase.from('software_licenses').select('*', { count: 'exact' });
+            // Apply region filter
+            const regionId = Auth.getRegionId();
+            if (regionId) query = query.eq('region_id', regionId);
             if (searchTerm) query = query.ilike('name', `%${searchTerm}%`);
 
             // Pagination
@@ -500,6 +510,7 @@
                         await Audit.logLicenseUpdated(id, oldData, result.data[0]);
                     }
                 } else {
+                    data.region_id = Auth.getRegionId(); // Assign to user's region
                     result = await supabase.from('software_licenses').insert([data]).select();
                     
                     if (!result.error && result.data && result.data[0]) {

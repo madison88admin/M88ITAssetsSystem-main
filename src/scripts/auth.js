@@ -161,7 +161,8 @@ const Auth = {
                 .from('user_profiles')
                 .select(`
                     *,
-                    department:departments(id, name)
+                    department:departments(id, name),
+                    region:regions(id, name, code, country)
                 `)
                 .eq('id', this.user.id)
                 .single();
@@ -278,11 +279,27 @@ const Auth = {
     },
     
     /**
-     * Check if user can edit (admin or IT staff)
+     * Check if user is executive
+     * @returns {boolean} Is executive
+     */
+    isExecutive() {
+        return this.hasRole('executive');
+    },
+    
+    /**
+     * Check if user is admin or executive
+     * @returns {boolean} Is admin or above
+     */
+    isAdminOrAbove() {
+        return this.hasRole(['executive', 'admin']);
+    },
+    
+    /**
+     * Check if user can edit (admin, executive, or IT staff)
      * @returns {boolean} Can edit
      */
     canEdit() {
-        return this.hasRole(['admin', 'it_staff']);
+        return this.hasRole(['executive', 'admin', 'it_staff']);
     },
     
     /**
@@ -295,13 +312,69 @@ const Auth = {
     
     /**
      * Get current user's role level
-     * @returns {number} Role level (1-3)
+     * @returns {number} Role level (1-4)
      */
     getRoleLevel() {
         if (!this.profile) return 0;
         return CONFIG.USER_ROLES[this.profile.role]?.level || 0;
     },
     
+    /**
+     * Get current user's region ID
+     * @returns {string|null} Region UUID, or null for executives (all regions)
+     */
+    getRegionId() {
+        if (!this.profile) return null;
+        return this.profile.region_id || null;
+    },
+    
+    /**
+     * Get current user's region info
+     * @returns {object|null} Region object with id, name, code, country
+     */
+    getRegion() {
+        if (!this.profile) return null;
+        return this.profile.region || null;
+    },
+    
+    /**
+     * Check if user has access to all regions (executive)
+     * @returns {boolean} Has all-region access
+     */
+    hasAllRegionAccess() {
+        return this.isExecutive() || !this.profile?.region_id;
+    },
+    
+    /**
+     * Get the effective region ID for data queries.
+     * - Executive: uses the globally selected region (window.selectedRegionId), null = all regions
+     * - Admin/IT Staff/Viewer: uses their assigned region_id
+     * @returns {string|null} Region UUID or null (null means all/no filter)
+     */
+    getEffectiveRegionId() {
+        if (this.isExecutive()) {
+            // Executive uses the dashboard/page region selector
+            return window.selectedRegionId || null;
+        }
+        return this.getRegionId();
+    },
+
+    /**
+     * Apply region filter to a Supabase query.
+     * If regionId is null, no filter is applied (show all).
+     * @param {object} query - Supabase query builder
+     * @param {string|null} regionId - Region UUID to filter by
+     * @param {string} column - Column name for region_id (default: 'region_id')
+     * @returns {object} Filtered query
+     */
+    applyRegionFilter(query, regionId = null, column = 'region_id') {
+        const effectiveRegion = regionId !== undefined ? regionId : this.getEffectiveRegionId();
+        if (effectiveRegion) {
+            return query.eq(column, effectiveRegion);
+        }
+        return query;
+    },
+
     // ===========================================
     // NAVIGATION HANDLERS
     // ===========================================

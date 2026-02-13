@@ -94,9 +94,21 @@ const MAINTENANCE_STATUS = {
 };
 
 const USER_ROLES = {
+    executive: { label: 'Executive', level: 4 },
     admin: { label: 'Administrator', level: 3 },
     it_staff: { label: 'IT Staff', level: 2 },
     viewer: { label: 'Viewer', level: 1 }
+};
+
+// ===========================================
+// REGION CONFIGURATION
+// ===========================================
+
+const REGIONS = {
+    PH: { label: 'Madison88 IT Assets in the Philippines', country: 'Philippines' },
+    ID: { label: 'Madison88 IT Assets in Indonesia', country: 'Indonesia' },
+    CN: { label: 'Madison88 IT Assets in China', country: 'China' },
+    US: { label: 'Madison88 IT Assets in United States', country: 'United States' }
 };
 
 // ===========================================
@@ -116,7 +128,7 @@ const NOTIFICATION_TYPES = {
 // ===========================================
 
 // Export all configurations as named exports
-export { APP_CONFIG, ASSET_STATUS, MAINTENANCE_STATUS, USER_ROLES, NOTIFICATION_TYPES };
+export { APP_CONFIG, ASSET_STATUS, MAINTENANCE_STATUS, USER_ROLES, REGIONS, NOTIFICATION_TYPES };
 
 // Also make config available globally for non-module scripts
 window.CONFIG = {
@@ -125,6 +137,7 @@ window.CONFIG = {
     ASSET_STATUS,
     MAINTENANCE_STATUS,
     USER_ROLES,
+    REGIONS,
     NOTIFICATION_TYPES
 };
 

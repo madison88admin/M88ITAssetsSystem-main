@@ -58,7 +58,7 @@
                 </div>
                 
                 <!-- Asset Management -->
-                <div class="nav-section">
+                <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
                     <a href="assets.html" class="nav-link">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +81,7 @@
                 </div>
                 
                 <!-- Tracking -->
-                <div class="nav-section">
+                <div class="nav-section" id="tracking-nav">
                     <p class="nav-section-title">Tracking</p>
                     <a href="maintenance.html" class="nav-link">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -483,13 +483,11 @@
                 document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
                 document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
                 
-                if (currentUser.role !== 'admin') {
-                    document.getElementById('admin-nav').classList.add('hidden');
-                }
+                // Setup navigation visibility based on role and permissions
+                await Utils.setupNavigation(currentUser, supabase);
                 
-                await Utils.handleReportsNavVisibility(currentUser, supabase);
-                
-                if (currentUser.role === 'viewer') {
+                // Redirect viewers and executives to dashboard
+                if (currentUser.role === 'viewer' || currentUser.role === 'executive') {
                     window.location.href = 'dashboard.html';
                     return;
                 }
@@ -511,9 +509,20 @@
         }
 
         async function loadStats() {
-            const { count: investigating } = await supabase.from('lost_assets').select('*', { count: 'exact', head: true }).eq('status', 'under_investigation');
-            const { count: found } = await supabase.from('lost_assets').select('*', { count: 'exact', head: true }).eq('status', 'found');
-            const { count: permanentlyLost } = await supabase.from('lost_assets').select('*', { count: 'exact', head: true }).eq('status', 'permanently_lost');
+            const regionId = Auth.getRegionId();
+
+            // Use the view which has region_id
+            let invQ = supabase.from('v_lost_assets_full').select('*', { count: 'exact', head: true }).eq('status', 'under_investigation');
+            if (regionId) invQ = invQ.eq('region_id', regionId);
+            const { count: investigating } = await invQ;
+
+            let fndQ = supabase.from('v_lost_assets_full').select('*', { count: 'exact', head: true }).eq('status', 'found');
+            if (regionId) fndQ = fndQ.eq('region_id', regionId);
+            const { count: found } = await fndQ;
+
+            let plQ = supabase.from('v_lost_assets_full').select('*', { count: 'exact', head: true }).eq('status', 'permanently_lost');
+            if (regionId) plQ = plQ.eq('region_id', regionId);
+            const { count: permanentlyLost } = await plQ;
             
             document.getElementById('stat-investigating').textContent = investigating || 0;
             document.getElementById('stat-found').textContent = found || 0;
@@ -526,6 +535,10 @@
             
             try {
                 let query = supabase.from('v_lost_assets_full').select('*', { count: 'exact' });
+
+                // Apply region filter
+                const regionId = Auth.getRegionId();
+                if (regionId) query = query.eq('region_id', regionId);
                 
                 const status = document.getElementById('status-filter').value;
                 const dateFrom = document.getElementById('date-from').value;
@@ -658,7 +671,10 @@
         };
 
         async function loadAssets() {
-            const { data } = await supabase.from('assets').select('id, asset_tag, name').order('asset_tag');
+            let assetQ = supabase.from('assets').select('id, asset_tag, name');
+            const regionId = Auth.getRegionId();
+            if (regionId) assetQ = assetQ.eq('region_id', regionId);
+            const { data } = await assetQ.order('asset_tag');
             assets = data || [];
             const select = document.getElementById('asset-select');
             select.innerHTML = '<option value="">Select Asset</option>' + 
@@ -666,7 +682,10 @@
         }
 
         async function loadEmployees() {
-            const { data } = await supabase.from('employees').select('id, full_name, departments(name)').order('full_name');
+            let empQ = supabase.from('employees').select('id, full_name, departments(name)');
+            const regionId2 = Auth.getRegionId();
+            if (regionId2) empQ = empQ.eq('region_id', regionId2);
+            const { data } = await empQ.order('full_name');
             employees = data || [];
             const select = document.getElementById('employee-select');
             select.innerHTML = '<option value="">Select Employee</option>' + 

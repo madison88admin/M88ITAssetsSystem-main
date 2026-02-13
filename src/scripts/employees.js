@@ -151,7 +151,8 @@ const Employees = {
             // Add created_by tracking
             const insertData = {
                 ...employeeData,
-                created_by: Auth.user?.id
+                created_by: Auth.user?.id,
+                region_id: Auth.getRegionId()  // Assign to user's region
             };
             
             const { data, error } = await window.supabase

@@ -481,55 +481,128 @@ const Utils = {
     // ===========================================
     
     /**
-     * Check if IT staff has permission to access reports
+     * Check a permission setting from system_settings table
      * @param {object} supabase - Supabase client instance
-     * @returns {Promise<boolean>} True if allowed, false otherwise
+     * @param {string} settingKey - The setting_key to check
+     * @returns {Promise<boolean>} True if enabled, false otherwise
      */
-    async checkReportsPermission(supabase) {
+    async checkPermission(supabase, settingKey) {
         try {
-            const { data: setting } = await supabase
+            const { data } = await supabase
                 .from('system_settings')
                 .select('setting_value')
-                .eq('setting_key', 'it_staff_can_access_reports')
+                .eq('setting_key', settingKey)
                 .single();
             
-            return setting ? setting.setting_value === 'true' : true; // Default to true if setting not found
+            return data ? data.setting_value === 'true' : true; // Default to true if not found
         } catch (error) {
-            console.error('Error checking reports permission:', error);
+            console.error(`Error checking permission ${settingKey}:`, error);
             return true; // Fail open - allow access on error
         }
     },
 
     /**
-     * Hide reports navigation if IT staff doesn't have permission
+     * Legacy wrapper — checks IT staff reports permission
+     * @param {object} supabase - Supabase client instance
+     * @returns {Promise<boolean>} True if allowed
+     */
+    async checkReportsPermission(supabase) {
+        return this.checkPermission(supabase, 'it_staff_can_access_reports');
+    },
+
+    /**
+     * Setup navigation visibility based on user role and permissions.
+     * Centralised function — call from every page's init().
+     * Replaces the duplicated inline nav-hiding blocks.
+     *
+     * Nav structure:
+     *   - Main: Dashboard (always visible)
+     *   - asset-management-nav: Assets, Employees, Assignments
+     *   - tracking-nav: Maintenance, Lost Assets, Software Licenses
+     *   - reports-nav: Reports link + Audit Logs link
+     *   - admin-nav: Settings
+     *
+     * Role visibility:
+     *   Executive  → Dashboard, Reports, Audit Logs, Settings
+     *   Admin      → All sections
+     *   IT Staff   → All except Settings; Reports/Audit conditional
+     *   Viewer     → Dashboard only
+     *
+     * @param {object} currentUser - Current user with role property
+     * @param {object} supabase - Supabase client instance
+     */
+    async setupNavigation(currentUser, supabase) {
+        const assetManagementNav = document.getElementById('asset-management-nav');
+        const trackingNav = document.getElementById('tracking-nav');
+        const reportsNav = document.getElementById('reports-nav');
+        const adminNav = document.getElementById('admin-nav');
+        const reportsLink = reportsNav?.querySelector('a[href="reports.html"]');
+        const auditLogsLink = document.getElementById('audit-logs-link');
+
+        switch (currentUser.role) {
+            case 'executive':
+                // Executive: Dashboard, Reports, Audit Logs, Settings
+                assetManagementNav?.classList.add('hidden');
+                trackingNav?.classList.add('hidden');
+                // reports-nav and admin-nav stay visible
+                break;
+
+            case 'admin':
+                // Admin: all sections visible
+                break;
+
+            case 'it_staff': {
+                // IT Staff: hide admin; conditionally show reports & audit logs
+                adminNav?.classList.add('hidden');
+
+                // Check both permissions in parallel
+                const [hasReports, hasAuditLogs] = await Promise.all([
+                    this.checkPermission(supabase, 'it_staff_can_access_reports'),
+                    this.checkPermission(supabase, 'it_staff_can_access_audit_logs')
+                ]);
+
+                if (!hasReports && !hasAuditLogs) {
+                    // Neither — hide entire section
+                    reportsNav?.classList.add('hidden');
+                } else {
+                    // Show section, hide individual links as needed
+                    if (!hasReports && reportsLink) {
+                        reportsLink.classList.add('hidden');
+                    }
+                    if (!hasAuditLogs && auditLogsLink) {
+                        auditLogsLink.classList.add('hidden');
+                    }
+                }
+                break;
+            }
+
+            case 'viewer':
+                // Viewer: dashboard only
+                assetManagementNav?.classList.add('hidden');
+                trackingNav?.classList.add('hidden');
+                reportsNav?.classList.add('hidden');
+                adminNav?.classList.add('hidden');
+                break;
+
+            default:
+                // Unknown role — hide everything except dashboard
+                assetManagementNav?.classList.add('hidden');
+                trackingNav?.classList.add('hidden');
+                reportsNav?.classList.add('hidden');
+                adminNav?.classList.add('hidden');
+                break;
+        }
+    },
+
+    /**
+     * Legacy wrapper — kept for backward compatibility.
+     * Prefer setupNavigation() which handles everything.
      * @param {object} currentUser - Current user object with role
      * @param {object} supabase - Supabase client instance
      */
     async handleReportsNavVisibility(currentUser, supabase) {
-        const reportsNav = document.getElementById('reports-nav');
-        if (!reportsNav) return;
-
-        // Viewers never see reports
-        if (currentUser.role === 'viewer') {
-            reportsNav.classList.add('hidden');
-            return;
-        }
-
-        // Admins always see reports
-        if (currentUser.role === 'admin') {
-            reportsNav.classList.remove('hidden');
-            return;
-        }
-
-        // Check permission for IT staff
-        if (currentUser.role === 'it_staff') {
-            const hasPermission = await this.checkReportsPermission(supabase);
-            if (hasPermission) {
-                reportsNav.classList.remove('hidden');
-            } else {
-                reportsNav.classList.add('hidden');
-            }
-        }
+        // Now handled by setupNavigation — this is a no-op if setupNavigation was already called.
+        // Kept for safety in case any page still calls it.
     },
 
     // ===========================================

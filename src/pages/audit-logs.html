@@ -238,20 +238,20 @@
                 return;
             }
 
-            // Hide navigation sections for viewers (shouldn't reach here, but safety check)
-            if (currentUser.role === 'viewer') {
-                document.getElementById('asset-management-nav')?.classList.add('hidden');
-                document.getElementById('tracking-nav')?.classList.add('hidden');
-                document.getElementById('reports-nav')?.classList.add('hidden');
+            // Setup navigation visibility based on role and permissions
+            await Utils.setupNavigation(currentUser, supabase);
+
+            // Check if IT staff has permission to access audit logs
+            if (currentUser.role === 'it_staff') {
+                const hasAuditAccess = await Utils.checkPermission(supabase, 'it_staff_can_access_audit_logs');
+                if (!hasAuditAccess) {
+                    window.location.href = 'dashboard.html';
+                    return;
+                }
             }
 
-            // Hide admin section for non-admins
-            if (currentUser.role !== 'admin') {
-                document.getElementById('admin-nav')?.classList.add('hidden');
-            }
-
-            // Hide user filter for non-admins
-            if (currentUser.role !== 'admin') {
+            // Show user filter for admin and executive (they can see all users' logs)
+            if (currentUser.role !== 'admin' && currentUser.role !== 'executive') {
                 document.getElementById('user-filter-group')?.classList.add('hidden');
             }
             
@@ -259,14 +259,11 @@
             document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
             document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
 
-            // Handle reports navigation visibility based on permission
-            await Utils.handleReportsNavVisibility(currentUser, supabase);
-
             // Don't set default dates - show all logs by default
             // User can set date filters if needed
 
-            // Load user list for admin filter
-            if (currentUser.role === 'admin') {
+            // Load user list for admin/executive filter
+            if (currentUser.role === 'admin' || currentUser.role === 'executive') {
                 await loadUserList();
             }
 

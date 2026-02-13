@@ -174,6 +174,12 @@
                         </svg>
                     </button>
                     <h2 class="text-lg font-semibold text-white">Dashboard</h2>
+                    <!-- Region Selector (Executive only) -->
+                    <select id="region-selector" class="hidden ml-4 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" onchange="handleRegionChange(this.value)">
+                        <option value="">All Regions</option>
+                    </select>
+                    <!-- Region label (Admin/IT Staff) -->
+                    <span id="region-label" class="hidden ml-3 text-sm text-slate-400"></span>
                 </div>
                 <div class="topbar-right">
                     <!-- Notifications -->
@@ -205,7 +211,7 @@
             <div class="page-content">
                 <!-- Page Header -->
                 <div class="page-header">
-                    <h1 class="page-title">Dashboard Overview</h1>
+                    <h1 class="page-title" id="dashboard-title">Dashboard Overview</h1>
                     <p class="page-subtitle">Welcome back, <span id="welcome-user-name" class="text-blue-400 font-medium">User</span>! Here's what's happening with your IT assets.</p>
                 </div>
 
@@ -387,6 +393,7 @@
         
         // Global state
         let currentUser = null;
+        let selectedRegionId = null; // null = all regions (for executive)
 
         /**
          * Initialize the dashboard
@@ -434,21 +441,11 @@
                 // Update UI with user info
                 updateUserInfo(currentUser);
 
-                // Show/hide admin nav based on role
-                if (currentUser.role !== 'admin') {
-                    const adminNav = document.getElementById('admin-nav');
-                    if (adminNav) adminNav.classList.add('hidden');
-                }
+                // Setup navigation visibility based on role and permissions
+                await Utils.setupNavigation(currentUser, supabase);
 
-                // Hide all navigation sections for viewer role - viewers can only see dashboard
-                if (currentUser.role === 'viewer') {
-                    document.getElementById('asset-management-nav')?.classList.add('hidden');
-                    document.getElementById('tracking-nav')?.classList.add('hidden');
-                    document.getElementById('reports-nav')?.classList.add('hidden');
-                }
-
-                // Check reports permission for IT staff
-                await Utils.handleReportsNavVisibility(currentUser, supabase);
+                // Setup region context
+                await setupRegionContext();
 
                 // console.log('📊 Loading dashboard data...');
 
@@ -499,6 +496,71 @@
         }
 
         /**
+         * Setup region context - dropdown for executive, label for admin/IT staff
+         */
+        async function setupRegionContext() {
+            const regionSelector = document.getElementById('region-selector');
+            const regionLabel = document.getElementById('region-label');
+            const dashboardTitle = document.getElementById('dashboard-title');
+
+            if (currentUser.role === 'executive') {
+                // Executive: show region dropdown with all regions
+                const { data: regions } = await supabase.from('regions').select('*').eq('is_active', true).order('name');
+                
+                if (regionSelector && regions) {
+                    // Populate options
+                    regions.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.id;
+                        opt.textContent = r.name;
+                        regionSelector.appendChild(opt);
+                    });
+                    regionSelector.classList.remove('hidden');
+                }
+                
+                // Default: show all regions
+                selectedRegionId = null;
+                if (dashboardTitle) dashboardTitle.textContent = 'Madison88 IT Assets - All Regions';
+                
+            } else if (currentUser.role === 'admin' || currentUser.role === 'it_staff') {
+                // Admin / IT Staff: show their region label
+                selectedRegionId = currentUser.region_id || null;
+                
+                if (currentUser.region_id && regionLabel) {
+                    // Fetch region name
+                    const { data: region } = await supabase.from('regions').select('name').eq('id', currentUser.region_id).single();
+                    if (region) {
+                        regionLabel.textContent = region.name;
+                        regionLabel.classList.remove('hidden');
+                        if (dashboardTitle) dashboardTitle.textContent = region.name;
+                    }
+                }
+            }
+            // Viewer: no region context shown, sees default dashboard title
+        }
+
+        /**
+         * Handle region dropdown change (Executive only)
+         */
+        window.handleRegionChange = async function(regionId) {
+            selectedRegionId = regionId || null;
+            const dashboardTitle = document.getElementById('dashboard-title');
+            
+            if (!regionId) {
+                if (dashboardTitle) dashboardTitle.textContent = 'Madison88 IT Assets - All Regions';
+            } else {
+                const selector = document.getElementById('region-selector');
+                const selectedOption = selector?.options[selector.selectedIndex];
+                if (dashboardTitle && selectedOption) {
+                    dashboardTitle.textContent = selectedOption.textContent;
+                }
+            }
+            
+            // Reload dashboard data with new region filter
+            await loadDashboardData();
+        };
+
+        /**
          * Load dashboard data
          */
         async function loadDashboardData() {
@@ -521,9 +583,11 @@
          */
         async function loadStats() {
             // Get asset counts by status
-            const { data: assets, error } = await supabase
+            let statsQuery = supabase
                 .from('assets')
                 .select('status');
+            if (selectedRegionId) statsQuery = statsQuery.eq('region_id', selectedRegionId);
+            const { data: assets, error } = await statsQuery;
 
             if (error) {
                 console.error('Error loading stats:', error);
@@ -554,9 +618,11 @@
         async function loadCharts() {
             try {
                 // Status Chart - fetch with category information
-                const { data: statusData, error: statusError } = await supabase
+                let statusQuery = supabase
                     .from('assets')
                     .select('status, category:asset_categories(name)');
+                if (selectedRegionId) statusQuery = statusQuery.eq('region_id', selectedRegionId);
+                const { data: statusData, error: statusError } = await statusQuery;
 
                 if (statusError) {
                     console.error('Error loading status data:', statusError);
@@ -722,9 +788,11 @@
                 });
 
             // Category Chart
-            const { data: categoryData } = await supabase
+            let catQuery = supabase
                 .from('assets')
                 .select('category:asset_categories(name)');
+            if (selectedRegionId) catQuery = catQuery.eq('region_id', selectedRegionId);
+            const { data: categoryData } = await catQuery;
 
             const categoryCounts = {};
             categoryData?.forEach(asset => {
@@ -777,10 +845,12 @@
                 const twelveMonthsAgo = new Date();
                 twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
                 
-                const { data: assets, error } = await supabase
+                let trendQuery = supabase
                     .from('assets')
                     .select('created_at, purchase_date')
                     .gte('created_at', twelveMonthsAgo.toISOString());
+                if (selectedRegionId) trendQuery = trendQuery.eq('region_id', selectedRegionId);
+                const { data: assets, error } = await trendQuery;
 
                 if (error) {
                     console.error('Error loading acquisition data:', error);
@@ -931,9 +1001,11 @@
         async function loadHeatmap() {
             try {
                 // Fetch assets with category information
-                const { data: assets, error } = await supabase
+                let heatmapQuery = supabase
                     .from('assets')
                     .select('status, category:asset_categories(name)');
+                if (selectedRegionId) heatmapQuery = heatmapQuery.eq('region_id', selectedRegionId);
+                const { data: assets, error } = await heatmapQuery;
 
                 if (error) {
                     console.error('Error loading heatmap data:', error);
@@ -1159,10 +1231,11 @@
             try {
                 // Check warranty expiring (with error handling)
                 try {
-                    const { data: warrantyExpiring } = await supabase
+                    let wQuery = supabase
                         .from('v_warranty_expiring')
-                        .select('*')
-                        .limit(3);
+                        .select('*');
+                    if (selectedRegionId) wQuery = wQuery.eq('region_id', selectedRegionId);
+                    const { data: warrantyExpiring } = await wQuery.limit(3);
 
                     if (warrantyExpiring?.length) {
                         alerts.push({
@@ -1178,10 +1251,11 @@
 
                 // Check refresh due (with error handling)
                 try {
-                    const { data: refreshDue } = await supabase
+                    let rQuery = supabase
                         .from('v_assets_refresh_due')
-                        .select('*')
-                        .limit(3);
+                        .select('*');
+                    if (selectedRegionId) rQuery = rQuery.eq('region_id', selectedRegionId);
+                    const { data: refreshDue } = await rQuery.limit(3);
 
                     if (refreshDue?.length) {
                         alerts.push({
@@ -1196,27 +1270,34 @@
                 }
 
                 // Check pending maintenance
-                const { data: pendingMaintenance } = await supabase
+                let mQuery = supabase
                     .from('maintenance_records')
-                    .select('*')
-                    .eq('status', 'in_progress')
-                    .limit(3);
+                    .select('*, asset:assets(region_id)')
+                    .eq('status', 'in_progress');
+                const { data: pendingMaintenance } = await mQuery.limit(3);
+                // Filter by region client-side for maintenance (joined through asset)
+                const filteredMaintenance = selectedRegionId
+                    ? (pendingMaintenance || []).filter(m => m.asset?.region_id === selectedRegionId)
+                    : pendingMaintenance;
 
-                if (pendingMaintenance?.length) {
+                if (filteredMaintenance?.length) {
                     alerts.push({
                         type: 'warning',
                         title: 'Maintenance In Progress',
-                        message: `${pendingMaintenance.length} asset(s) are currently being repaired`,
+                        message: `${filteredMaintenance.length} asset(s) are currently being repaired`,
                         icon: 'tool'
                     });
                 }
 
                 // Check lost assets under investigation
-                const { data: lostAssets } = await supabase
+                let laQuery = supabase
                     .from('lost_assets')
-                    .select('*')
-                    .eq('status', 'under_investigation')
-                    .limit(5);
+                    .select('*, asset:assets(region_id)')
+                    .eq('status', 'under_investigation');
+                const { data: lostAssetsRaw } = await laQuery.limit(5);
+                const lostAssets = selectedRegionId
+                    ? (lostAssetsRaw || []).filter(la => la.asset?.region_id === selectedRegionId)
+                    : lostAssetsRaw;
 
                 if (lostAssets?.length) {
                     alerts.push({

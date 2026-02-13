@@ -39,13 +39,13 @@
                     <p class="nav-section-title">Main</p>
                     <a href="dashboard.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
                 </div>
-                <div class="nav-section">
+                <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
                     <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>Assets</a>
                     <a href="employees.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Employees</a>
                     <a href="assignments.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Assignments</a>
                 </div>
-                <div class="nav-section">
+                <div class="nav-section" id="tracking-nav">
                     <p class="nav-section-title">Tracking</p>
                     <a href="maintenance.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Maintenance</a>
                     <a href="lost-assets.html" class="nav-link">
@@ -159,6 +159,7 @@
                             <div class="flex items-center gap-4 mb-4">
                                 <select id="user-role-filter" class="form-select" style="width: 200px;" onchange="handleUserRoleFilter()">
                                     <option value="">All Roles</option>
+                                    <option value="executive">Executive</option>
                                     <option value="admin">Admin</option>
                                     <option value="it_staff">IT Staff</option>
                                     <option value="viewer">Viewer</option>
@@ -167,7 +168,7 @@
                         </div>
                         <div class="overflow-x-auto">
                             <table class="data-table">
-                                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th style="text-align: right;">Actions</th></tr></thead>
+                                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Region</th><th>Status</th><th style="text-align: right;">Actions</th></tr></thead>
                                 <tbody id="users-table"></tbody>
                             </table>
                         </div>
@@ -217,6 +218,18 @@
                                     <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
                             </div>
+
+                            <!-- IT Staff Audit Logs Access -->
+                            <div class="flex items-center justify-between p-4 bg-slate-800 rounded-lg">
+                                <div class="flex-1">
+                                    <h4 class="text-white font-medium mb-1">IT Staff Audit Logs Access</h4>
+                                    <p class="text-sm text-slate-400">Allow IT Staff to view the Audit Logs page</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="it-staff-audit-logs-toggle" class="sr-only peer" onchange="toggleAuditLogsPermission(this.checked)">
+                                    <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
                             
                             <div class="text-xs text-slate-500 p-4 bg-slate-900 rounded-lg">
                                 <p class="font-medium text-slate-400 mb-2">Permission Effects:</p>
@@ -225,7 +238,9 @@
                                     <li><strong>Reports Access Disabled:</strong> Reports navigation hidden for IT Staff, access redirected to dashboard</li>
                                     <li><strong>Import Access Enabled:</strong> IT Staff can see and use Import buttons in Assets and Employees pages</li>
                                     <li><strong>Import Access Disabled:</strong> Import buttons hidden for IT Staff</li>
-                                    <li><strong>Note:</strong> Admins always have full access regardless of these settings</li>
+                                    <li><strong>Audit Logs Access Enabled:</strong> IT Staff can access the Audit Logs page</li>
+                                    <li><strong>Audit Logs Access Disabled:</strong> Audit Logs navigation hidden for IT Staff, access redirected to dashboard</li>
+                                    <li><strong>Note:</strong> Admins and Executives always have full access regardless of these settings</li>
                                     <li><strong>Note:</strong> Viewers never have access regardless of these settings</li>
                                 </ul>
                             </div>
@@ -297,7 +312,7 @@
             const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', session.user.id).single();
             currentUser = { ...session.user, ...profile };
             
-            if (currentUser.role !== 'admin') {
+            if (currentUser.role !== 'admin' && currentUser.role !== 'executive') {
                 window.location.href = 'dashboard.html';
                 return;
             }
@@ -306,8 +321,11 @@
             document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
             document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
 
-            // Handle reports navigation visibility based on permission
-            await Utils.handleReportsNavVisibility(currentUser, supabase);
+            // Setup navigation visibility based on role
+            await Utils.setupNavigation(currentUser, supabase);
+
+            // Setup settings tabs based on role
+            setupTabsForRole();
 
             await loadAllData();
             switchTab('users'); // Load users tab by default
@@ -379,11 +397,17 @@
             const from = (usersCurrentPage - 1) * usersPageSize;
             const to = from + usersPageSize - 1;
             
-            let query = supabase.from('user_profiles').select('*', { count: 'exact' }).order('full_name');
+            let query = supabase.from('user_profiles').select('*, region:regions(id, name, code)', { count: 'exact' }).order('full_name');
             
             // Apply role filter if selected
             if (selectedUserRole) {
                 query = query.eq('role', selectedUserRole);
+            }
+            
+            // Admin: only show users in their region (IT Staff and Viewer)
+            if (currentUser.role === 'admin' && currentUser.region_id) {
+                query = query.eq('region_id', currentUser.region_id)
+                             .in('role', ['it_staff', 'viewer']);
             }
             
             const { data, count } = await query.range(from, to);
@@ -395,17 +419,35 @@
             document.getElementById('users-pagination-info').textContent = 
                 `Showing ${startRecord}-${endRecord} of ${count || 0} users`;
             
-            document.getElementById('users-table').innerHTML = (data || []).map(u => `
-                <tr>
-                    <td class="font-medium text-white">${u.full_name || '-'}</td>
-                    <td>${u.email || '-'}</td>
-                    <td><span class="badge ${u.role === 'admin' ? 'badge-info' : u.role === 'viewer' ? 'badge-warning' : 'badge-gray'}">${u.role || 'user'}</span></td>
-                    <td><span class="badge ${u.is_active !== false ? 'badge-success' : 'badge-danger'}">${u.is_active !== false ? 'Active' : 'Inactive'}</span></td>
-                    <td class="text-right">
-                        <button class="btn btn-sm btn-secondary" onclick="editUser('${u.id}')">Edit Role</button>
-                    </td>
-                </tr>
-            `).join('') || '<tr><td colspan="5" class="text-center py-8 text-slate-400">No users</td></tr>';
+            // Role badge colors
+            const roleBadgeClass = (role) => {
+                switch(role) {
+                    case 'executive': return 'badge-warning';
+                    case 'admin': return 'badge-info';
+                    case 'it_staff': return 'badge-gray';
+                    case 'viewer': return 'badge-warning';
+                    default: return 'badge-gray';
+                }
+            };
+
+            document.getElementById('users-table').innerHTML = (data || []).map(u => {
+                const regionName = u.region?.name || (u.role === 'executive' ? 'All Regions' : 'Unassigned');
+                const canEdit = currentUser.role === 'executive' || 
+                    (currentUser.role === 'admin' && ['it_staff', 'viewer'].includes(u.role));
+                
+                return `
+                    <tr>
+                        <td class="font-medium text-white">${u.full_name || '-'}</td>
+                        <td>${u.email || '-'}</td>
+                        <td><span class="badge ${roleBadgeClass(u.role)}">${u.role || 'user'}</span></td>
+                        <td class="text-slate-400 text-sm">${regionName}</td>
+                        <td><span class="badge ${u.is_active !== false ? 'badge-success' : 'badge-danger'}">${u.is_active !== false ? 'Active' : 'Inactive'}</span></td>
+                        <td class="text-right">
+                            ${canEdit ? `<button class="btn btn-sm btn-secondary" onclick="editUser('${u.id}')">Edit Role</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="6" class="text-center py-8 text-slate-400">No users</td></tr>';
             
             updateUsersPagination();
         }
@@ -480,7 +522,7 @@
                 const { data } = await supabase
                     .from('system_settings')
                     .select('*')
-                    .in('setting_key', ['it_staff_can_access_reports', 'it_staff_can_import_data']);
+                    .in('setting_key', ['it_staff_can_access_reports', 'it_staff_can_import_data', 'it_staff_can_access_audit_logs']);
                 
                 if (data) {
                     data.forEach(setting => {
@@ -489,11 +531,28 @@
                             document.getElementById('it-staff-reports-toggle').checked = isEnabled;
                         } else if (setting.setting_key === 'it_staff_can_import_data') {
                             document.getElementById('it-staff-import-toggle').checked = isEnabled;
+                        } else if (setting.setting_key === 'it_staff_can_access_audit_logs') {
+                            document.getElementById('it-staff-audit-logs-toggle').checked = isEnabled;
                         }
                     });
                 }
             } catch (error) {
                 console.error('Error loading permissions:', error);
+            }
+        }
+
+        /**
+         * Setup visible tabs based on user role
+         * Executive: Users, Permissions, Assignment Rules, Categories
+         * Admin: Users, Permissions only
+         */
+        function setupTabsForRole() {
+            if (currentUser.role === 'executive') {
+                // Executive sees all 4 tabs — nothing to hide
+            } else if (currentUser.role === 'admin') {
+                // Admin sees only Users and Permissions tabs
+                document.getElementById('tab-assignment-rules')?.classList.add('hidden');
+                document.getElementById('tab-categories')?.classList.add('hidden');
             }
         }
 
@@ -579,13 +638,48 @@
             const { data: user } = await supabase.from('user_profiles').select('*').eq('id', id).single();
             if (!user) return;
 
-            document.getElementById('modal-fields').innerHTML = `
-                <p class="text-white font-medium">${user.full_name || user.email}</p>
-                <div class="form-group"><label class="form-label" for="field-role">Role</label><select id="field-role" class="form-select">
+            // Load regions for the dropdown
+            const { data: regions } = await supabase.from('regions').select('*').eq('is_active', true).order('name');
+            const regionOptions = (regions || []).map(r => 
+                `<option value="${r.id}" ${user.region_id === r.id ? 'selected' : ''}>${r.name}</option>`
+            ).join('');
+
+            // Build role options based on who is editing
+            let roleOptionsHtml = '';
+            if (currentUser.role === 'executive') {
+                // Executive can assign any role
+                roleOptionsHtml = `
                     <option value="viewer" ${user.role === 'viewer' ? 'selected' : ''}>Viewer (Dashboard Only)</option>
                     <option value="it_staff" ${user.role === 'it_staff' ? 'selected' : ''}>IT Staff</option>
                     <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                    <option value="executive" ${user.role === 'executive' ? 'selected' : ''}>Executive</option>
+                `;
+            } else {
+                // Admin can only assign IT Staff and Viewer
+                roleOptionsHtml = `
+                    <option value="viewer" ${user.role === 'viewer' ? 'selected' : ''}>Viewer (Dashboard Only)</option>
+                    <option value="it_staff" ${user.role === 'it_staff' ? 'selected' : ''}>IT Staff</option>
+                `;
+            }
+
+            // Region field - only shown for non-executive roles, and only if current user is executive
+            const regionFieldHtml = currentUser.role === 'executive' ? `
+                <div class="form-group" id="region-field-group">
+                    <label class="form-label" for="field-region">Assigned Region</label>
+                    <select id="field-region" class="form-select">
+                        <option value="">No Region (All Regions - Executive)</option>
+                        ${regionOptions}
+                    </select>
+                    <p class="text-xs text-slate-400 mt-1">Executive role users don't need a region assignment</p>
+                </div>
+            ` : '';
+
+            document.getElementById('modal-fields').innerHTML = `
+                <p class="text-white font-medium">${user.full_name || user.email}</p>
+                <div class="form-group"><label class="form-label" for="field-role">Role</label><select id="field-role" class="form-select" onchange="handleRoleChangeInModal(this.value)">
+                    ${roleOptionsHtml}
                 </select></div>
+                ${regionFieldHtml}
                 <div class="form-group">
                     <label class="form-label" for="field-active">Active</label>
                     <select id="field-active" class="form-select">
@@ -598,6 +692,24 @@
             document.getElementById('item-type').value = 'user';
             document.getElementById('modal-title').textContent = 'Edit User';
             document.getElementById('edit-modal').classList.remove('hidden');
+            
+            // Toggle region field visibility based on selected role
+            handleRoleChangeInModal(user.role);
+        };
+
+        // Show/hide region field when role changes in the edit user modal
+        window.handleRoleChangeInModal = function(role) {
+            const regionGroup = document.getElementById('region-field-group');
+            if (regionGroup) {
+                if (role === 'executive') {
+                    regionGroup.classList.add('hidden');
+                    // Clear region selection for executive
+                    const regionSelect = document.getElementById('field-region');
+                    if (regionSelect) regionSelect.value = '';
+                } else {
+                    regionGroup.classList.remove('hidden');
+                }
+            }
         };
 
         window.handleSave = async (e) => {
@@ -617,10 +729,19 @@
                     const newRole = document.getElementById('field-role').value;
                     const newActive = document.getElementById('field-active').value === 'true';
                     
-                    await supabase.from('user_profiles').update({
+                    // Build update object
+                    const updateData = {
                         role: newRole,
                         is_active: newActive
-                    }).eq('id', id);
+                    };
+
+                    // Handle region_id (only if the field exists - executive editing)
+                    const regionField = document.getElementById('field-region');
+                    if (regionField) {
+                        updateData.region_id = regionField.value || null;
+                    }
+
+                    await supabase.from('user_profiles').update(updateData).eq('id', id);
                     
                     // Log role change if changed
                     if (oldUser.role !== newRole) {
@@ -777,6 +898,39 @@
                 showToast(error.message || 'Failed to update permission', 'error');
                 // Revert toggle on error
                 document.getElementById('it-staff-import-toggle').checked = !enabled;
+            }
+        };
+
+        window.toggleAuditLogsPermission = async (enabled) => {
+            try {
+                const { error } = await supabase
+                    .from('system_settings')
+                    .update({ 
+                        setting_value: enabled ? 'true' : 'false',
+                        updated_by: currentUser.id,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('setting_key', 'it_staff_can_access_audit_logs');
+                
+                if (error) throw error;
+                
+                // Log the permission change
+                await Audit.log({
+                    action: 'UPDATE',
+                    actionCategory: Audit.CATEGORIES.SETTINGS,
+                    description: `${enabled ? 'Enabled' : 'Disabled'} IT Staff access to audit logs`,
+                    tableName: 'system_settings',
+                    recordId: null,
+                    oldValues: { setting_key: 'it_staff_can_access_audit_logs', enabled: !enabled },
+                    newValues: { setting_key: 'it_staff_can_access_audit_logs', enabled: enabled }
+                });
+                
+                showToast(`IT Staff audit logs access ${enabled ? 'enabled' : 'disabled'}`, 'success');
+            } catch (error) {
+                console.error('Toggle audit logs permission error:', error);
+                showToast(error.message || 'Failed to update permission', 'error');
+                // Revert toggle on error
+                document.getElementById('it-staff-audit-logs-toggle').checked = !enabled;
             }
         };
 

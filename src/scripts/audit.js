@@ -447,14 +447,29 @@ const Audit = {
                 .order('created_at', { ascending: false });
             
             // Role-based filtering
-            if (currentUser.role === 'viewer') {
-                // Viewers can only see their own logs
-                query = query.eq('user_id', currentUser.id);
+            if (currentUser.role === 'executive') {
+                // Executive sees ALL logs across all regions - no filter
+            } else if (currentUser.role === 'admin') {
+                // Admin sees all logs except those from executives
+                // Fetch executive user IDs and exclude them
+                const { data: execUsers } = await window.supabase
+                    .from('user_profiles')
+                    .select('id')
+                    .eq('role', 'executive');
+                const execIds = (execUsers || []).map(u => u.id);
+                if (execIds.length > 0) {
+                    // Exclude executive users' logs
+                    for (const execId of execIds) {
+                        query = query.neq('user_id', execId);
+                    }
+                }
             } else if (currentUser.role === 'it_staff') {
                 // IT Staff can only see their own logs (all categories)
                 query = query.eq('user_id', currentUser.id);
+            } else if (currentUser.role === 'viewer') {
+                // Viewers can only see their own logs
+                query = query.eq('user_id', currentUser.id);
             }
-            // Admin sees everything - no additional filters needed
 
             // Apply additional filters
             if (action) {

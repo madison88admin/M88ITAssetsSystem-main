@@ -157,7 +157,8 @@ const Assets = {
                 ...assetData,
                 created_by: Auth.user?.id,
                 logged_by: Auth.user?.id,  // Track who logged/created this asset
-                status: 'available'  // All new assets must be available
+                status: 'available',  // All new assets must be available
+                region_id: Auth.getRegionId()  // Assign to user's region
             };
             
             const { data, error } = await window.supabase

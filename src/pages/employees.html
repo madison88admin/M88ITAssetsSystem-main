@@ -323,16 +323,11 @@
                 document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
                 document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
                 
-                // Hide admin-only navigation for non-admin users
-                if (currentUser.role !== 'admin') {
-                    document.getElementById('admin-nav').classList.add('hidden');
-                }
+                // Setup navigation visibility based on role and permissions
+                await Utils.setupNavigation(currentUser, supabase);
                 
-                // Handle reports navigation visibility based on permission
-                await Utils.handleReportsNavVisibility(currentUser, supabase);
-                
-                // Redirect viewers to dashboard - they should only see dashboard
-                if (currentUser.role === 'viewer') {
+                // Redirect viewers and executives to dashboard
+                if (currentUser.role === 'viewer' || currentUser.role === 'executive') {
                     window.location.href = 'dashboard.html';
                     return;
                 }
@@ -435,6 +430,10 @@
             try {
                 let query = supabase.from('employees').select(`*, department:departments(name), location:locations(name)`, { count: 'exact' });
                 
+                // Apply region filter
+                const regionId = Auth.getRegionId();
+                if (regionId) query = query.eq('region_id', regionId);
+
                 // Apply status filter
                 if (filters.status === 'active') {
                     query = query.eq('is_active', true);

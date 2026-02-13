@@ -43,13 +43,13 @@
                     <p class="nav-section-title">Main</p>
                     <a href="dashboard.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
                 </div>
-                <div class="nav-section">
+                <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
                     <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>Assets</a>
                     <a href="employees.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Employees</a>
                     <a href="assignments.html" class="nav-link active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Assignments</a>
                 </div>
-                <div class="nav-section">
+                <div class="nav-section" id="tracking-nav">
                     <p class="nav-section-title">Tracking</p>
                     <a href="maintenance.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Maintenance</a>
                     <a href="lost-assets.html" class="nav-link">
@@ -290,16 +290,11 @@
             document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
             document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
             
-            // Handle reports navigation visibility based on permission
-            await Utils.handleReportsNavVisibility(currentUser, supabase);
+            // Setup navigation visibility based on role and permissions
+            await Utils.setupNavigation(currentUser, supabase);
             
-            // Hide admin-only navigation for non-admin users
-            if (currentUser.role !== 'admin') {
-                document.getElementById('admin-nav').classList.add('hidden');
-            }
-            
-            // Redirect viewers to dashboard - they should only see dashboard
-            if (currentUser.role === 'viewer') {
+            // Redirect viewers and executives to dashboard
+            if (currentUser.role === 'viewer' || currentUser.role === 'executive') {
                 window.location.href = 'dashboard.html';
                 return;
             }
@@ -321,17 +316,25 @@
         }
 
         async function loadStats() {
-            // Active assignments
-            const { count: active } = await supabase.from('asset_assignments').select('*', { count: 'exact', head: true }).is('returned_date', null);
+            const regionId = Auth.getRegionId();
+
+            // Active assignments (region-scoped via view)
+            let activeQ = supabase.from('v_asset_assignments_full').select('*', { count: 'exact', head: true }).is('returned_date', null);
+            if (regionId) activeQ = activeQ.eq('region_id', regionId);
+            const { count: active } = await activeQ;
             document.getElementById('stat-active').textContent = active || 0;
 
             // Available assets
-            const { count: available } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'available');
+            let availQ = supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'available');
+            if (regionId) availQ = availQ.eq('region_id', regionId);
+            const { count: available } = await availQ;
             document.getElementById('stat-available').textContent = available || 0;
 
             // Returned this month
             const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-            const { count: returned } = await supabase.from('asset_assignments').select('*', { count: 'exact', head: true }).not('returned_date', 'is', null).gte('returned_date', startOfMonth);
+            let retQ = supabase.from('v_asset_assignments_full').select('*', { count: 'exact', head: true }).not('returned_date', 'is', null).gte('returned_date', startOfMonth);
+            if (regionId) retQ = retQ.eq('region_id', regionId);
+            const { count: returned } = await retQ;
             document.getElementById('stat-returned').textContent = returned || 0;
         }
 
@@ -341,6 +344,10 @@
 
             const filter = document.getElementById('status-filter').value;
             let query = supabase.from('v_asset_assignments_full').select('*', { count: 'exact' }).order('assigned_date', { ascending: false });
+
+            // Apply region filter
+            const regionId = Auth.getRegionId();
+            if (regionId) query = query.eq('region_id', regionId);
 
             if (filter === 'active') query = query.is('returned_date', null);
             else if (filter === 'returned') query = query.not('returned_date', 'is', null);
@@ -438,13 +445,19 @@
         }
 
         async function loadAssetOptions() {
-            const { data: assets } = await supabase.from('assets').select('id, asset_tag, name').eq('status', 'available').order('name');
+            let assetQ = supabase.from('assets').select('id, asset_tag, name').eq('status', 'available');
+            const regionId = Auth.getRegionId();
+            if (regionId) assetQ = assetQ.eq('region_id', regionId);
+            const { data: assets } = await assetQ.order('name');
             const select = document.getElementById('assign-asset');
             select.innerHTML = '<option value="">Select an asset</option>' + (assets || []).map(a => `<option value="${a.id}">${a.name} (${a.asset_tag})</option>`).join('');
         }
 
         async function loadEmployeeOptions() {
-            const { data: employees } = await supabase.from('employees').select('id, full_name, employee_id').eq('is_active', true).order('full_name');
+            let empQ = supabase.from('employees').select('id, full_name, employee_id').eq('is_active', true);
+            const regionId = Auth.getRegionId();
+            if (regionId) empQ = empQ.eq('region_id', regionId);
+            const { data: employees } = await empQ.order('full_name');
             const select = document.getElementById('assign-employee');
             select.innerHTML = '<option value="">Select an employee</option>' + (employees || []).map(e => `<option value="${e.id}">${e.full_name} (${e.employee_id})</option>`).join('');
         }
@@ -594,6 +607,10 @@
                     .select('id, full_name, email, department_id')
                     .eq('is_active', true)
                     .order('full_name');
+
+                // Apply region filter
+                const regionId = Auth.getRegionId();
+                if (regionId) empQuery = empQuery.eq('region_id', regionId);
                 
                 if (deptFilter !== 'all') {
                     empQuery = empQuery.eq('department_id', deptFilter);
@@ -608,6 +625,9 @@
                     .from('v_asset_assignments_full')
                     .select('*')
                     .order('assigned_date', { ascending: false });
+
+                // Apply region filter
+                if (regionId) query = query.eq('region_id', regionId);
 
                 if (filter === 'active') query = query.is('returned_date', null);
                 else if (filter === 'returned') query = query.not('returned_date', 'is', null);

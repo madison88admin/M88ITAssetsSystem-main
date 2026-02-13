@@ -42,13 +42,13 @@
                     <p class="nav-section-title">Main</p>
                     <a href="dashboard.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
                 </div>
-                <div class="nav-section">
+                <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
                     <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>Assets</a>
                     <a href="employees.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Employees</a>
                     <a href="assignments.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Assignments</a>
                 </div>
-                <div class="nav-section">
+                <div class="nav-section" id="tracking-nav">
                     <p class="nav-section-title">Tracking</p>
                     <a href="maintenance.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Maintenance</a>
                     <a href="lost-assets.html" class="nav-link">
@@ -94,6 +94,19 @@
                 <div class="page-header">
                     <h1 class="page-title">Generate Reports</h1>
                     <p class="page-subtitle">Export data and generate various reports</p>
+                </div>
+
+                <!-- Region Selector for Executive -->
+                <div id="report-region-selector" class="hidden mb-6">
+                    <div class="card">
+                        <div class="card-body flex items-center gap-4">
+                            <label class="text-sm font-medium text-slate-300">Region:</label>
+                            <select id="report-region" class="form-select bg-slate-700 border-slate-600 text-white rounded-lg px-3 py-2" onchange="handleReportRegionChange()">
+                                <option value="">All Regions</option>
+                            </select>
+                            <span id="report-region-label" class="text-sm text-slate-400 hidden"></span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Report Cards -->
@@ -241,6 +254,7 @@
         import { showToast } from '../scripts/components.js';
 
         let currentUser = null;
+        let reportRegionId = null; // Region filter for reports
 
         async function init() {
             const { data: { session } } = await supabase.auth.getSession();
@@ -252,7 +266,8 @@
             document.getElementById('user-name').textContent = currentUser.full_name || 'User';
             document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
             document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
-            if (currentUser.role !== 'admin') document.getElementById('admin-nav').classList.add('hidden');
+            // Setup navigation visibility based on role and permissions
+            await Utils.setupNavigation(currentUser, supabase);
             
             // Redirect viewers to dashboard - they should only see dashboard
             if (currentUser.role === 'viewer') {
@@ -283,11 +298,50 @@
             // Enable keyboard search for all dropdowns
             Utils.enableAllSelectsKeyboardSearch('select');
 
+            // Setup region context for reports
+            await setupReportRegion();
+
             document.getElementById('loading-screen').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
         }
 
         window.toggleSidebar = () => { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-overlay').classList.toggle('hidden'); };
+
+        /**
+         * Setup region context for reports
+         */
+        async function setupReportRegion() {
+            if (currentUser.role === 'executive') {
+                // Executive sees dropdown to pick region
+                const selector = document.getElementById('report-region-selector');
+                selector.classList.remove('hidden');
+                const select = document.getElementById('report-region');
+                const { data: regions } = await supabase.from('regions').select('*').eq('is_active', true).order('name');
+                (regions || []).forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.textContent = r.name;
+                    select.appendChild(opt);
+                });
+                reportRegionId = null; // All regions by default
+            } else {
+                // Admin/IT Staff see their region label
+                reportRegionId = currentUser.region_id || null;
+                if (reportRegionId) {
+                    const selector = document.getElementById('report-region-selector');
+                    selector.classList.remove('hidden');
+                    document.getElementById('report-region').classList.add('hidden');
+                    const label = document.getElementById('report-region-label');
+                    label.classList.remove('hidden');
+                    const { data: region } = await supabase.from('regions').select('name').eq('id', reportRegionId).single();
+                    label.textContent = region?.name || 'Your Region';
+                }
+            }
+        }
+
+        window.handleReportRegionChange = function() {
+            reportRegionId = document.getElementById('report-region').value || null;
+        };
         window.handleLogout = async () => { 
             try {
                 const { data: { session } } = await supabase.auth.getSession();
@@ -307,7 +361,9 @@
 
                 switch (type) {
                     case 'assets':
-                        const { data: assets } = await supabase.from('v_assets_full').select('*').order('asset_tag');
+                        let assetQ = supabase.from('v_assets_full').select('*').order('asset_tag');
+                        if (reportRegionId) assetQ = assetQ.eq('region_id', reportRegionId);
+                        const { data: assets } = await assetQ;
                         data = (assets || []).map(a => ({
                             'Asset Tag': a.asset_tag,
                             'Name': a.name,
@@ -328,7 +384,9 @@
                         break;
 
                     case 'assignments':
-                        const { data: assignments } = await supabase.from('v_asset_assignments_full').select('*').is('returned_date', null);
+                        let assignQ = supabase.from('v_asset_assignments_full').select('*').is('returned_date', null);
+                        if (reportRegionId) assignQ = assignQ.eq('region_id', reportRegionId);
+                        const { data: assignments } = await assignQ;
                         data = (assignments || []).map(a => ({
                             'Asset Tag': a.asset_tag || '',
                             'Asset Name': a.asset_name || '',
@@ -342,7 +400,9 @@
                         break;
 
                     case 'warranty':
-                        const { data: warranty } = await supabase.from('v_warranty_expiring').select('*');
+                        let wQ = supabase.from('v_warranty_expiring').select('*');
+                        if (reportRegionId) wQ = wQ.eq('region_id', reportRegionId);
+                        const { data: warranty } = await wQ;
                         data = (warranty || []).map(a => ({
                             'Asset Tag': a.asset_tag,
                             'Name': a.name,
@@ -354,7 +414,9 @@
                         break;
 
                     case 'maintenance':
-                        const { data: maint } = await supabase.from('v_maintenance_records_full').select('*').order('created_at', { ascending: false });
+                        let maintQ = supabase.from('v_maintenance_records_full').select('*').order('created_at', { ascending: false });
+                        if (reportRegionId) maintQ = maintQ.eq('region_id', reportRegionId);
+                        const { data: maint } = await maintQ;
                         data = (maint || []).map(m => ({
                             'Asset Tag': m.asset_tag || '',
                             'Asset Name': m.asset_name || '',
@@ -372,7 +434,9 @@
                         break;
 
                     case 'employees':
-                        const { data: emps } = await supabase.from('v_employees_full').select('*').order('full_name');
+                        let empQ = supabase.from('v_employees_full').select('*').order('full_name');
+                        if (reportRegionId) empQ = empQ.eq('region_id', reportRegionId);
+                        const { data: emps } = await empQ;
                         data = (emps || []).map(e => ({
                             'Employee ID': e.employee_id,
                             'Full Name': e.full_name,
@@ -389,7 +453,9 @@
                         break;
 
                     case 'lost_assets':
-                        const { data: lostAssets } = await supabase.from('v_lost_assets_full').select('*').order('date_reported', { ascending: false });
+                        let lostQ = supabase.from('v_lost_assets_full').select('*').order('date_reported', { ascending: false });
+                        if (reportRegionId) lostQ = lostQ.eq('region_id', reportRegionId);
+                        const { data: lostAssets } = await lostQ;
                         data = (lostAssets || []).map(la => ({
                             'Asset Tag': la.asset_tag || '',
                             'Asset Name': la.asset_name || '',
