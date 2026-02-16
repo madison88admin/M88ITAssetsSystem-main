@@ -149,9 +149,9 @@ const Utils = {
      * @param {string} currency - Currency code
      * @returns {string} Formatted currency
      */
-    formatCurrency(amount, currency = 'PHP') {
+    formatCurrency(amount, currency = 'USD') {
         if (amount === null || amount === undefined) return '-';
-        return new Intl.NumberFormat('en-PH', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: currency
         }).format(amount);

@@ -370,13 +370,13 @@
                         
                         <!-- Estimated Value -->
                         <div class="form-group">
-                            <label class="form-label" for="estimated-value">Estimated Value (PHP)</label>
+                            <label class="form-label" for="estimated-value">Estimated Value (USD)</label>
                             <input type="number" id="estimated-value" class="form-input" placeholder="0.00" step="0.01" min="0">
                         </div>
                         
                         <!-- Liability Amount -->
                         <div class="form-group">
-                            <label class="form-label" for="liability-amount">Liability Amount (PHP)</label>
+                            <label class="form-label" for="liability-amount">Liability Amount (USD)</label>
                             <input type="number" id="liability-amount" class="form-input" placeholder="0.00" step="0.01" min="0">
                         </div>
                         
@@ -602,7 +602,7 @@
                             </td>
                             <td>${r.last_known_location || '-'}</td>
                             <td><span class="badge ${statusClasses[r.status]}">${statusLabels[r.status]}</span></td>
-                            <td>${r.estimated_value ? '₱' + parseFloat(r.estimated_value).toLocaleString() : '-'}</td>
+                            <td>${r.estimated_value ? '$' + parseFloat(r.estimated_value).toLocaleString() : '-'}</td>
                             <td class="text-right">
                                 <div class="flex justify-end gap-2">
                                     ${isReadOnly ? `
@@ -795,8 +795,8 @@
                         <div><span class="text-slate-400">Last Location:</span><br><span class="text-white">${record.last_known_location || '-'}</span></div>
                         <div><span class="text-slate-400">Status:</span><br><span class="text-white">${statusLabels[record.status]}</span></div>
                         ${record.date_found ? `<div><span class="text-slate-400">Date Found:</span><br><span class="text-white">${new Date(record.date_found).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'})}</span></div>` : ''}
-                        <div><span class="text-slate-400">Estimated Value:</span><br><span class="text-white">${record.estimated_value ? '₱' + parseFloat(record.estimated_value).toLocaleString() : '-'}</span></div>
-                        ${record.liability_amount ? `<div><span class="text-slate-400">Liability Amount:</span><br><span class="text-white">₱${parseFloat(record.liability_amount).toLocaleString()}</span></div>` : ''}
+                        <div><span class="text-slate-400">Estimated Value:</span><br><span class="text-white">${record.estimated_value ? '$' + parseFloat(record.estimated_value).toLocaleString() : '-'}</span></div>
+                        ${record.liability_amount ? `<div><span class="text-slate-400">Liability Amount:</span><br><span class="text-white">$${parseFloat(record.liability_amount).toLocaleString()}</span></div>` : ''}
                         ${record.liability_action ? `<div><span class="text-slate-400">Liability Action:</span><br><span class="text-white">${record.liability_action.replace('_', ' ').toUpperCase()}</span></div>` : ''}
                         ${record.payment_status ? `<div><span class="text-slate-400">Payment Status:</span><br><span class="text-white">${record.payment_status}</span></div>` : ''}
                         <div class="col-span-2"><span class="text-slate-400">Circumstances:</span><br><span class="text-white">${record.circumstances || '-'}</span></div>

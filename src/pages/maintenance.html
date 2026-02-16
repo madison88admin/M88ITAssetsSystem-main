@@ -111,7 +111,7 @@
                     <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-yellow-400" id="stat-in-progress">--</p><p class="text-slate-400 text-sm">In Progress</p></div></div>
                     <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-green-400" id="stat-completed">--</p><p class="text-slate-400 text-sm">Completed</p></div></div>
                     <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-red-400" id="stat-unfixable">--</p><p class="text-slate-400 text-sm">Cannot Repair</p></div></div>
-                    <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-blue-400" id="stat-total-cost">₱0</p><p class="text-slate-400 text-sm">Total Repair Cost</p></div></div>
+                    <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-blue-400" id="stat-total-cost">$0</p><p class="text-slate-400 text-sm">Total Repair Cost</p></div></div>
                 </div>
 
                 <!-- Damaged Assets Panel -->
@@ -245,7 +245,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div class="form-group">
-                            <label class="form-label" for="maint-cost">Cost (PHP)</label>
+                            <label class="form-label" for="maint-cost">Cost (USD)</label>
                             <input type="number" id="maint-cost" class="form-input" step="0.01" min="0">
                         </div>
                         <div class="form-group">
@@ -374,7 +374,7 @@
             document.getElementById('stat-in-progress').textContent = inProgress || 0;
             document.getElementById('stat-completed').textContent = completed || 0;
             document.getElementById('stat-unfixable').textContent = unfixable || 0;
-            document.getElementById('stat-total-cost').textContent = `₱${totalCost.toLocaleString()}`;
+            document.getElementById('stat-total-cost').textContent = `$${totalCost.toLocaleString()}`;
         }
 
         async function loadRecords() {
@@ -445,7 +445,7 @@
                     <td class="max-w-xs truncate">${r.issue_description || '-'}</td>
                     <td>${r.start_date ? new Date(r.start_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '-'}</td>
                     <td>${r.completed_date ? new Date(r.completed_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '-'}</td>
-                    <td>${r.cost ? `₱${r.cost.toLocaleString()}` : '-'}</td>
+                    <td>${r.cost ? `$${r.cost.toLocaleString()}` : '-'}</td>
                     <td><span class="badge ${statusClasses[r.status] || 'badge-gray'}">${statusLabels[r.status] || r.status}</span></td>
                     <td class="text-right">
                         ${currentUser.role !== 'viewer' ? `
@@ -701,7 +701,7 @@
                 const statusLabels = { completed: 'Completed', cannot_repair: 'Cannot Repair' };
                 document.getElementById('confirm-status').textContent = statusLabels[status];
                 document.getElementById('confirm-date').textContent = data.completed_date ? new Date(data.completed_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '-';
-                document.getElementById('confirm-cost').textContent = data.cost ? `₱${parseFloat(data.cost).toLocaleString()}` : '-';
+                document.getElementById('confirm-cost').textContent = data.cost ? `$${parseFloat(data.cost).toLocaleString()}` : '-';
                 document.getElementById('confirm-performed').textContent = data.performed_by || '-';
                 
                 document.getElementById('confirm-modal').classList.remove('hidden');

@@ -67,7 +67,7 @@ const APP_CONFIG = {
     dateFormat: 'YYYY-MM-DD',
     
     // Currency
-    currency: 'PHP',
+    currency: 'USD',
     
     // Theme
     defaultTheme: 'dark'
