@@ -1152,6 +1152,27 @@ body {
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+.import-badge-create {
+    background: rgba(6, 182, 212, 0.15);
+    color: #22d3ee;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.import-badge-reassign {
+    background: rgba(249, 115, 22, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+/* Row status: reassign */
+.import-row-reassign {
+    background: rgba(249, 115, 22, 0.05);
+}
+
+.import-row-reassign:hover {
+    background: rgba(249, 115, 22, 0.09) !important;
+}
+
 /* Issues column */
 .import-preview-issues {
     display: flex;

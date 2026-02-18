@@ -155,10 +155,10 @@ const Assets = {
             // Add metadata
             const insertData = {
                 ...assetData,
-                created_by: Auth.user?.id,
-                logged_by: Auth.user?.id,  // Track who logged/created this asset
+                created_by: Auth.user?.id || assetData.created_by || null,
+                logged_by: Auth.user?.id || assetData.logged_by || null,  // Track who logged/created this asset
                 status: 'available',  // All new assets must be available
-                region_id: Auth.getRegionId()  // Assign to user's region
+                region_id: Auth.getRegionId() || assetData.region_id || null  // Assign to user's region, fall back to supplied value
             };
             
             const { data, error } = await window.supabase

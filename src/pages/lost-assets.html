@@ -672,13 +672,22 @@
         };
 
         async function loadAssets() {
+            // Fetch asset IDs that are currently in-progress in Maintenance
+            // so they can be excluded from the Lost Assets dropdown.
+            const { data: activeMaint } = await supabase
+                .from('maintenance_records')
+                .select('asset_id')
+                .eq('status', 'in_progress');
+            const maintAssetIds = new Set((activeMaint || []).map(r => r.asset_id));
+
             let assetQ = supabase.from('assets').select('id, asset_tag, name');
             const regionId = currentUser.region_id || null;
             if (regionId) assetQ = assetQ.eq('region_id', regionId);
             const { data } = await assetQ.order('asset_tag');
-            assets = data || [];
+            assets = (data || []).filter(a => !maintAssetIds.has(a.id));
+
             const select = document.getElementById('asset-select');
-            select.innerHTML = '<option value="">Select Asset</option>' + 
+            select.innerHTML = '<option value="">Select Asset</option>' +
                 assets.map(a => `<option value="${a.id}">${a.asset_tag} - ${a.name}</option>`).join('');
         }
 
@@ -817,10 +826,24 @@
 
         window.handleSubmit = async function(event) {
             event.preventDefault();
-            
+
             const recordId = document.getElementById('record-id').value;
             const assetId = document.getElementById('asset-select').value;
             const newStatus = document.getElementById('status-select').value;
+
+            // Block if this asset has an active Maintenance record (in progress)
+            if (assetId && !recordId) {
+                const { data: maintCheck } = await supabase
+                    .from('maintenance_records')
+                    .select('id')
+                    .eq('asset_id', assetId)
+                    .eq('status', 'in_progress')
+                    .limit(1);
+                if (maintCheck && maintCheck.length > 0) {
+                    showToast('Cannot log as lost — this asset is currently under active maintenance.', 'error');
+                    return;
+                }
+            }
             
             const employeeValue = document.getElementById('employee-select').value;
             const data = {

@@ -97,6 +97,30 @@ const Import = {
         status: ['status', 'is_active', 'active']
     },
 
+    // Assignment column aliases (combines asset + employee + assignment fields)
+    _assignmentColumnMap: {
+        // Asset identification
+        serial_number: ['serial_number', 'serial', 'serialnumber', 'sn', 'serial no', 'serial no.', 'asset_serial', 'asset serial'],
+        category: ['category', 'type', 'asset type', 'category_name', 'asset_category', 'asset category'],
+        // Asset optional (for auto-creation)
+        asset_name: ['asset_name', 'asset name', 'asset'],
+        asset_tag: ['asset_tag', 'assettag', 'asset tag', 'tag'],
+        brand: ['brand', 'manufacturer', 'make'],
+        model: ['model', 'model name', 'model no', 'model no.'],
+        // Employee identification
+        employee_id: ['employee_id', 'employeeid', 'emp_id', 'empid', 'emp id', 'employee id'],
+        full_name: ['full_name', 'fullname', 'employee name', 'employee_name', 'assigned_to', 'assigned to', 'name'],
+        // Employee optional (for auto-creation)
+        email: ['email', 'email address', 'e-mail'],
+        position: ['position', 'title', 'job title', 'role', 'job_title'],
+        // Shared
+        department: ['department', 'dept', 'department_name'],
+        location: ['location', 'loc', 'site', 'table', 'seat'],
+        // Assignment specific
+        assigned_date: ['assigned_date', 'date assigned', 'date', 'assignment_date', 'assigned date'],
+        notes: ['notes', 'remarks', 'comments', 'note']
+    },
+
     // ===========================================
     // ASSET VALIDATION (pre-import)
     // ===========================================
@@ -222,7 +246,7 @@ const Import = {
             // --- Build DB-ready record ---
             r.dbRecord = {
                 name: mapped.name || '',
-                asset_tag: mapped.asset_tag || '',
+                asset_tag: mapped.asset_tag || null,
                 serial_number: mapped.serial_number || '',
                 brand: mapped.brand || '',
                 model: mapped.model || '',
@@ -380,6 +404,271 @@ const Import = {
     },
 
     // ===========================================
+    // ASSIGNMENT VALIDATION (pre-import)
+    // ===========================================
+
+    /**
+     * Validate assignment data against the database before import.
+     * Checks asset/employee existence, auto-creates missing ones, detects reassignments.
+     *
+     * @param {object[]} jsonData - Raw parsed rows from the file
+     * @param {object} supabase - Supabase client instance
+     * @returns {Promise<object>} { rows, summary, lookups } or { error }
+     */
+    async validateAssignmentImport(jsonData, supabase) {
+        // Fetch lookup tables
+        const { data: categories } = await supabase.from('asset_categories').select('id, name');
+        const { data: departments } = await supabase.from('departments').select('id, name');
+        const { data: locations } = await supabase.from('locations').select('id, name');
+
+        if (!categories || categories.length === 0) {
+            return { error: 'No categories found. Please create at least one category first.' };
+        }
+
+        const catMap = {};
+        categories.forEach(c => { catMap[c.name.toLowerCase()] = c.id; });
+        const defaultCatId = categories[0].id;
+        const defaultCatName = categories[0].name;
+
+        const deptMap = {};
+        (departments || []).forEach(d => { deptMap[d.name.toLowerCase()] = d.id; });
+
+        const locMap = {};
+        (locations || []).forEach(l => { locMap[l.name.toLowerCase()] = l.id; });
+
+        // Fetch existing assets
+        const { data: existingAssets } = await supabase
+            .from('assets')
+            .select('id, serial_number, name, asset_tag, brand, model, status, category_id');
+
+        const assetSerialMap = {};
+        (existingAssets || []).forEach(a => {
+            if (a.serial_number) assetSerialMap[a.serial_number.toLowerCase()] = a;
+        });
+
+        // Fetch existing employees
+        const { data: existingEmployees } = await supabase
+            .from('employees')
+            .select('id, employee_id, full_name, email, position, is_active');
+
+        const empIdMap = {};
+        (existingEmployees || []).forEach(e => {
+            if (e.employee_id) empIdMap[e.employee_id.toLowerCase()] = e;
+        });
+
+        // Fetch active assignments
+        const { data: activeAssignments } = await supabase
+            .from('asset_assignments')
+            .select('id, asset_id, employee_id, assigned_date, notes')
+            .is('returned_date', null);
+
+        const assetAssignmentMap = {};
+        (activeAssignments || []).forEach(a => {
+            assetAssignmentMap[a.asset_id] = a;
+        });
+
+        const rows = [];
+        const seenPairs = {};
+
+        for (let i = 0; i < jsonData.length; i++) {
+            const raw = jsonData[i];
+            const rowNum = i + 2;
+            const mapped = this._mapColumns(raw, this._assignmentColumnMap);
+
+            const r = {
+                row: rowNum,
+                mapped,
+                status: 'new',
+                selected: true,
+                warnings: [],
+                errors: [],
+                existingAsset: null,
+                existingEmployee: null,
+                currentAssignment: null,
+                assetDbRecord: null,
+                employeeDbRecord: null,
+                assignmentData: {
+                    notes: mapped.notes || '',
+                    assigned_date: mapped.assigned_date || new Date().toISOString().split('T')[0]
+                }
+            };
+
+            // --- Required fields ---
+            if (!mapped.serial_number) {
+                r.errors.push('Missing serial number');
+                r.status = 'error';
+                r.selected = false;
+            }
+            if (!mapped.employee_id) {
+                r.errors.push('Missing employee ID');
+                if (r.status !== 'error') { r.status = 'error'; r.selected = false; }
+            }
+
+            // --- Category ---
+            let categoryId = defaultCatId;
+            let categoryName = defaultCatName;
+            if (mapped.category) {
+                const cid = catMap[mapped.category.toLowerCase()];
+                if (cid) {
+                    categoryId = cid;
+                    categoryName = mapped.category;
+                } else {
+                    r.warnings.push('Category "' + mapped.category + '" not found \u2014 will use default: ' + defaultCatName);
+                }
+            }
+
+            // --- Department ---
+            let departmentId = null;
+            if (mapped.department) {
+                departmentId = deptMap[mapped.department.toLowerCase()] || null;
+                if (!departmentId) {
+                    r.warnings.push('Department "' + mapped.department + '" not found \u2014 set to null');
+                }
+            }
+
+            // --- Location ---
+            let locationId = null;
+            if (mapped.location) {
+                locationId = locMap[mapped.location.toLowerCase()] || null;
+                if (!locationId) {
+                    r.warnings.push('Location "' + mapped.location + '" not found \u2014 set to null');
+                }
+            }
+
+            // --- File-internal duplicate (same serial+employee pair) ---
+            if (r.status !== 'error') {
+                const pairKey = (mapped.serial_number + '||' + mapped.employee_id).toLowerCase();
+                if (seenPairs[pairKey] !== undefined) {
+                    r.status = 'file_duplicate';
+                    r.errors.push('Duplicate assignment in file (same as row ' + seenPairs[pairKey] + ')');
+                    r.selected = false;
+                } else {
+                    seenPairs[pairKey] = rowNum;
+                }
+            }
+
+            if (r.status === 'error' || r.status === 'file_duplicate') {
+                rows.push(r);
+                continue;
+            }
+
+            // --- Check asset existence ---
+            const existingAsset = mapped.serial_number ? assetSerialMap[mapped.serial_number.toLowerCase()] : null;
+            let needsCreateAsset = false;
+
+            if (existingAsset) {
+                r.existingAsset = existingAsset;
+                if (existingAsset.status === 'decommissioned') {
+                    r.warnings.push('Asset is decommissioned \u2014 will be set to "assigned" if selected');
+                }
+            } else {
+                needsCreateAsset = true;
+                r.assetDbRecord = {
+                    name: mapped.asset_name || '',
+                    asset_tag: mapped.asset_tag || null,
+                    serial_number: mapped.serial_number,
+                    brand: mapped.brand || '',
+                    model: mapped.model || '',
+                    status: 'available',
+                    category_id: categoryId,
+                    department_id: departmentId,
+                    location_id: locationId
+                };
+            }
+
+            // --- Check employee existence ---
+            const existingEmployee = mapped.employee_id ? empIdMap[mapped.employee_id.toLowerCase()] : null;
+            let needsCreateEmployee = false;
+
+            if (existingEmployee) {
+                r.existingEmployee = existingEmployee;
+                if (!existingEmployee.is_active) {
+                    r.warnings.push('Employee is inactive \u2014 will still be assigned if selected');
+                }
+            } else {
+                needsCreateEmployee = true;
+                if (!mapped.full_name) {
+                    r.errors.push('Employee not found in DB and no Full Name provided for auto-creation');
+                    r.status = 'error';
+                    r.selected = false;
+                    rows.push(r);
+                    continue;
+                }
+                r.employeeDbRecord = {
+                    employee_id: mapped.employee_id,
+                    full_name: mapped.full_name,
+                    email: mapped.email || null,
+                    position: mapped.position || null,
+                    department_id: departmentId,
+                    location_id: locationId,
+                    is_active: true
+                };
+            }
+
+            // --- Determine status ---
+            if (needsCreateAsset && needsCreateEmployee) {
+                r.status = 'new_both';
+                r.warnings.push('Asset and employee will be auto-created');
+            } else if (needsCreateAsset) {
+                r.status = 'new_asset';
+                r.warnings.push('Asset will be auto-created');
+            } else if (needsCreateEmployee) {
+                r.status = 'new_employee';
+                r.warnings.push('Employee will be auto-created');
+            } else {
+                // Both exist — check current assignment status
+                const currentAssignment = assetAssignmentMap[existingAsset.id];
+
+                if (currentAssignment) {
+                    r.currentAssignment = currentAssignment;
+
+                    if (currentAssignment.employee_id === existingEmployee.id) {
+                        r.status = 'already_assigned';
+                        r.selected = false;
+                    } else {
+                        r.status = 'reassign';
+                        r.selected = false;
+                        const currentEmp = (existingEmployees || []).find(e => e.id === currentAssignment.employee_id);
+                        r.warnings.push('Currently assigned to: ' + (currentEmp ? currentEmp.full_name + ' (' + currentEmp.employee_id + ')' : 'Unknown employee'));
+                    }
+                } else {
+                    if (existingAsset.status !== 'available') {
+                        r.warnings.push('Asset status is "' + existingAsset.status + '" \u2014 will be changed to "assigned"');
+                    }
+                    r.status = 'new';
+                }
+            }
+
+            rows.push(r);
+        }
+
+        return {
+            rows,
+            summary: this._buildAssignmentSummary(rows),
+            lookups: { categories, departments: departments || [], locations: locations || [] }
+        };
+    },
+
+    _buildAssignmentSummary(rows) {
+        const newAsset = rows.filter(r => r.status === 'new_asset').length;
+        const newEmployee = rows.filter(r => r.status === 'new_employee').length;
+        const newBoth = rows.filter(r => r.status === 'new_both').length;
+        return {
+            total: rows.length,
+            new: rows.filter(r => r.status === 'new').length,
+            autoCreate: newAsset + newEmployee + newBoth,
+            newAsset,
+            newEmployee,
+            newBoth,
+            reassign: rows.filter(r => r.status === 'reassign').length,
+            alreadyAssigned: rows.filter(r => r.status === 'already_assigned').length,
+            fileDuplicates: rows.filter(r => r.status === 'file_duplicate').length,
+            errors: rows.filter(r => r.status === 'error').length,
+            warnings: rows.filter(r => r.warnings.length > 0).length
+        };
+    },
+
+    // ===========================================
     // VALIDATION PREVIEW MODAL
     // ===========================================
 
@@ -388,16 +677,56 @@ const Import = {
      * Returns a promise that resolves with { action, selectedRows }.
      *
      * @param {object} validation - Output from validateAssetImport / validateEmployeeImport
-     * @param {string} type - 'assets' | 'employees'
+     * @param {string} type - 'assets' | 'employees' | 'assignments'
      * @returns {Promise<{action: string, selectedRows: object[]}>}
      */
     showValidationPreview(validation, type) {
         const { rows, summary } = validation;
         const isAssets = type === 'assets';
+        const isAssignments = type === 'assignments';
 
         return new Promise((resolve) => {
             // ---- Summary bar ----
-            const summaryHtml = `
+            let summaryHtml;
+            if (isAssignments) {
+                const autoCreate = (summary.autoCreate || 0);
+                summaryHtml = `
+                <div class="import-preview-summary">
+                    <div class="import-preview-stat">
+                        <span class="import-preview-stat-count text-white">${summary.total}</span>
+                        <span class="import-preview-stat-label">Total Rows</span>
+                    </div>
+                    <div class="import-preview-stat">
+                        <span class="import-preview-stat-count text-green-400">${summary.new}</span>
+                        <span class="import-preview-stat-label">Ready</span>
+                    </div>
+                    ${autoCreate > 0 ? `
+                    <div class="import-preview-stat">
+                        <span class="import-preview-stat-count text-cyan-400">${autoCreate}</span>
+                        <span class="import-preview-stat-label">Auto-Create</span>
+                    </div>` : ''}
+                    ${summary.reassign > 0 ? `
+                    <div class="import-preview-stat">
+                        <span class="import-preview-stat-count text-orange-400">${summary.reassign}</span>
+                        <span class="import-preview-stat-label">Reassign</span>
+                    </div>` : ''}
+                    ${summary.alreadyAssigned > 0 ? `
+                    <div class="import-preview-stat">
+                        <span class="import-preview-stat-count text-yellow-400">${summary.alreadyAssigned}</span>
+                        <span class="import-preview-stat-label">Already Assigned</span>
+                    </div>` : ''}
+                    <div class="import-preview-stat">
+                        <span class="import-preview-stat-count text-red-400">${summary.errors}</span>
+                        <span class="import-preview-stat-label">Errors</span>
+                    </div>
+                    ${summary.warnings > 0 ? `
+                    <div class="import-preview-stat">
+                        <span class="import-preview-stat-count text-blue-400">${summary.warnings}</span>
+                        <span class="import-preview-stat-label">Warnings</span>
+                    </div>` : ''}
+                </div>`;
+            } else {
+                summaryHtml = `
                 <div class="import-preview-summary">
                     <div class="import-preview-stat">
                         <span class="import-preview-stat-count text-white">${summary.total}</span>
@@ -426,11 +755,14 @@ const Import = {
                         <span class="import-preview-stat-label">Warnings</span>
                     </div>` : ''}
                 </div>`;
+            }
 
             // ---- Table headers ----
-            const headers = isAssets
-                ? ['', 'Row', 'Status', 'Serial Number', 'Name', 'Category', 'Brand / Model', 'Issues']
-                : ['', 'Row', 'Status', 'Employee ID', 'Full Name', 'Email', 'Department', 'Issues'];
+            const headers = isAssignments
+                ? ['', 'Row', 'Status', 'Serial Number', 'Category', 'Employee ID', 'Employee Name', 'Issues']
+                : isAssets
+                    ? ['', 'Row', 'Status', 'Serial Number', 'Name', 'Category', 'Brand / Model', 'Issues']
+                    : ['', 'Row', 'Status', 'Employee ID', 'Full Name', 'Email', 'Department', 'Issues'];
 
             const thHtml = headers.map(h => '<th class="import-preview-th">' + h + '</th>').join('');
 
@@ -442,7 +774,8 @@ const Import = {
                 const checkChecked = r.selected ? 'checked' : '';
                 const rowClass = r.status === 'error' ? 'import-row-error'
                     : r.status === 'file_duplicate' ? 'import-row-error'
-                    : r.status === 'duplicate' ? 'import-row-duplicate'
+                    : (r.status === 'duplicate' || r.status === 'already_assigned') ? 'import-row-duplicate'
+                    : r.status === 'reassign' ? 'import-row-reassign'
                     : '';
 
                 // Issues column
@@ -455,7 +788,17 @@ const Import = {
                     : '<span class="text-xs text-green-400">\u2714 OK</span>';
 
                 let cells;
-                if (isAssets) {
+                if (isAssignments) {
+                    cells = `
+                        <td class="import-preview-td"><input type="checkbox" class="import-row-check" data-idx="${idx}" ${checkChecked} ${checkDisabled}></td>
+                        <td class="import-preview-td text-slate-500 text-xs">${r.row}</td>
+                        <td class="import-preview-td">${badge}</td>
+                        <td class="import-preview-td font-mono text-sm">${this._escHtml(r.mapped.serial_number || '\u2014')}</td>
+                        <td class="import-preview-td text-sm">${this._escHtml(r.mapped.category || 'default')}</td>
+                        <td class="import-preview-td font-mono text-sm">${this._escHtml(r.mapped.employee_id || '\u2014')}</td>
+                        <td class="import-preview-td">${this._escHtml(r.mapped.full_name || (r.existingEmployee ? r.existingEmployee.full_name : '\u2014'))}</td>
+                        <td class="import-preview-td">${issueHtml}</td>`;
+                } else if (isAssets) {
                     cells = `
                         <td class="import-preview-td"><input type="checkbox" class="import-row-check" data-idx="${idx}" ${checkChecked} ${checkDisabled}></td>
                         <td class="import-preview-td text-slate-500 text-xs">${r.row}</td>
@@ -477,9 +820,16 @@ const Import = {
                         <td class="import-preview-td">${issueHtml}</td>`;
                 }
 
-                // Existing record detail row for duplicates
+                // Existing record detail row for duplicates / reassignments
                 let dupDetail = '';
-                if (r.status === 'duplicate' && r.existingRecord) {
+                if (isAssignments && r.status === 'reassign' && r.currentAssignment) {
+                    const curEmp = r.existingEmployee ? '' : '';
+                    const info = 'Will return from current assignee and reassign to <strong>' + this._escHtml(r.mapped.full_name || r.existingEmployee?.full_name || '\u2014') + '</strong>';
+                    dupDetail = '<tr class="import-row-dup-detail"><td colspan="' + headers.length + '" class="import-preview-td" style="padding-left:2.5rem;"><div class="import-dup-info">' + info + '</div></td></tr>';
+                } else if (isAssignments && r.status === 'already_assigned') {
+                    const info = 'Already assigned to this employee \u2014 selecting will update notes/date';
+                    dupDetail = '<tr class="import-row-dup-detail"><td colspan="' + headers.length + '" class="import-preview-td" style="padding-left:2.5rem;"><div class="import-dup-info">' + info + '</div></td></tr>';
+                } else if (!isAssignments && r.status === 'duplicate' && r.existingRecord) {
                     const ex = r.existingRecord;
                     const info = isAssets
                         ? 'Existing in DB: <strong>' + this._escHtml(ex.name || '\u2014') + '</strong> | Tag: ' + this._escHtml(ex.asset_tag || '\u2014') + ' | Brand: ' + this._escHtml(ex.brand || '\u2014') + ' | Model: ' + this._escHtml(ex.model || '\u2014')
@@ -492,13 +842,39 @@ const Import = {
 
             const initialSelected = rows.filter(r => r.selected).length;
 
+            // ---- Toolbar select-all checkboxes ----
+            let toolbarCheckboxes;
+            if (isAssignments) {
+                toolbarCheckboxes = `
+                    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:#cbd5e1;cursor:pointer;">
+                        <input type="checkbox" id="import-select-all-new" checked> Select all new
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:#cbd5e1;cursor:pointer;">
+                        <input type="checkbox" id="import-select-all-reassign"> Select all reassignments
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:#cbd5e1;cursor:pointer;">
+                        <input type="checkbox" id="import-select-all-existing"> Select all existing (overwrite)
+                    </label>`;
+            } else {
+                toolbarCheckboxes = `
+                    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:#cbd5e1;cursor:pointer;">
+                        <input type="checkbox" id="import-select-all-new" checked> Select all new
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:#cbd5e1;cursor:pointer;">
+                        <input type="checkbox" id="import-select-all-dup"> Select all existing (overwrite)
+                    </label>`;
+            }
+
+            // ---- Modal title ----
+            const titleLabel = isAssignments ? 'Assignments' : (isAssets ? 'Assets' : 'Employees');
+
             // ---- Full modal markup ----
             const html = `
                 <div class="import-preview-overlay" id="import-preview-overlay">
                     <div class="import-preview-modal">
                         <div class="import-preview-header">
                             <div>
-                                <h3 class="text-lg font-semibold text-white">Import Preview \u2014 ${isAssets ? 'Assets' : 'Employees'}</h3>
+                                <h3 class="text-lg font-semibold text-white">Import Preview \u2014 ${titleLabel}</h3>
                                 <p class="text-sm text-slate-400 mt-1">Review and select which records to import</p>
                             </div>
                             <button class="import-preview-close" id="import-preview-close">&times;</button>
@@ -508,12 +884,7 @@ const Import = {
 
                         <div class="import-preview-toolbar">
                             <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-                                <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:#cbd5e1;cursor:pointer;">
-                                    <input type="checkbox" id="import-select-all-new" checked> Select all new
-                                </label>
-                                <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:#cbd5e1;cursor:pointer;">
-                                    <input type="checkbox" id="import-select-all-dup"> Select all existing (overwrite)
-                                </label>
+                                ${toolbarCheckboxes}
                             </div>
                             <div style="font-size:0.85rem;color:#94a3b8;">
                                 <span id="import-selected-count">${initialSelected}</span> / ${summary.total} selected
@@ -563,9 +934,13 @@ const Import = {
                 ch.addEventListener('change', updateCount);
             });
 
+            // "Select all new" — covers 'new' + assignment auto-create statuses
             overlay.querySelector('#import-select-all-new').addEventListener('change', (e) => {
+                const newStatuses = isAssignments
+                    ? ['new', 'new_asset', 'new_employee', 'new_both']
+                    : ['new'];
                 rows.forEach((r, idx) => {
-                    if (r.status === 'new') {
+                    if (newStatuses.includes(r.status)) {
                         r.selected = e.target.checked;
                         const cb = overlay.querySelector('.import-row-check[data-idx="' + idx + '"]');
                         if (cb) cb.checked = e.target.checked;
@@ -574,16 +949,50 @@ const Import = {
                 updateCount();
             });
 
-            overlay.querySelector('#import-select-all-dup').addEventListener('change', (e) => {
-                rows.forEach((r, idx) => {
-                    if (r.status === 'duplicate') {
-                        r.selected = e.target.checked;
-                        const cb = overlay.querySelector('.import-row-check[data-idx="' + idx + '"]');
-                        if (cb) cb.checked = e.target.checked;
-                    }
+            // "Select all existing (overwrite)" for assets/employees
+            const dupCheckbox = overlay.querySelector('#import-select-all-dup');
+            if (dupCheckbox) {
+                dupCheckbox.addEventListener('change', (e) => {
+                    rows.forEach((r, idx) => {
+                        if (r.status === 'duplicate') {
+                            r.selected = e.target.checked;
+                            const cb = overlay.querySelector('.import-row-check[data-idx="' + idx + '"]');
+                            if (cb) cb.checked = e.target.checked;
+                        }
+                    });
+                    updateCount();
                 });
-                updateCount();
-            });
+            }
+
+            // Assignment-specific: "Select all reassignments"
+            const reassignCheckbox = overlay.querySelector('#import-select-all-reassign');
+            if (reassignCheckbox) {
+                reassignCheckbox.addEventListener('change', (e) => {
+                    rows.forEach((r, idx) => {
+                        if (r.status === 'reassign') {
+                            r.selected = e.target.checked;
+                            const cb = overlay.querySelector('.import-row-check[data-idx="' + idx + '"]');
+                            if (cb) cb.checked = e.target.checked;
+                        }
+                    });
+                    updateCount();
+                });
+            }
+
+            // Assignment-specific: "Select all existing (overwrite)"
+            const existingCheckbox = overlay.querySelector('#import-select-all-existing');
+            if (existingCheckbox) {
+                existingCheckbox.addEventListener('change', (e) => {
+                    rows.forEach((r, idx) => {
+                        if (r.status === 'already_assigned') {
+                            r.selected = e.target.checked;
+                            const cb = overlay.querySelector('.import-row-check[data-idx="' + idx + '"]');
+                            if (cb) cb.checked = e.target.checked;
+                        }
+                    });
+                    updateCount();
+                });
+            }
 
             const close = (action) => {
                 overlay.classList.remove('open');
@@ -594,12 +1003,27 @@ const Import = {
 
                 if (action === 'cancel') {
                     resolve({ action: 'cancel', selectedRows: [] });
+                } else if (isAssignments) {
+                    // For assignments, return rich objects with action metadata
+                    const selected = rows
+                        .filter(r => r.selected && r.status !== 'error' && r.status !== 'file_duplicate')
+                        .map(r => ({
+                            _action: r.status,
+                            _existingAssetId: r.existingAsset?.id || null,
+                            _existingEmployeeId: r.existingEmployee?.id || null,
+                            _currentAssignmentId: r.currentAssignment?.id || null,
+                            assetData: r.assetDbRecord,
+                            employeeData: r.employeeDbRecord,
+                            assignmentData: r.assignmentData,
+                            mapped: r.mapped
+                        }));
+                    resolve({ action: 'import', selectedRows: selected });
                 } else {
+                    // For assets/employees, return flat db records
                     const selected = rows
                         .filter(r => r.selected && r.status !== 'error' && r.status !== 'file_duplicate')
                         .map(r => {
                             const rec = { ...r.dbRecord };
-                            // Tag overwrite rows so bulkImport knows to update instead of insert
                             if (r.status === 'duplicate' && r.existingRecord?.id) {
                                 rec._existingId = r.existingRecord.id;
                             }
@@ -626,10 +1050,15 @@ const Import = {
 
     _getStatusBadge(status) {
         const map = {
-            'new':            '<span class="import-badge import-badge-new">New</span>',
-            'duplicate':      '<span class="import-badge import-badge-dup">Existing</span>',
-            'file_duplicate': '<span class="import-badge import-badge-filedup">File Dup</span>',
-            'error':          '<span class="import-badge import-badge-error">Error</span>'
+            'new':              '<span class="import-badge import-badge-new">New</span>',
+            'duplicate':        '<span class="import-badge import-badge-dup">Existing</span>',
+            'file_duplicate':   '<span class="import-badge import-badge-filedup">File Dup</span>',
+            'error':            '<span class="import-badge import-badge-error">Error</span>',
+            'new_asset':        '<span class="import-badge import-badge-create">+ Asset</span>',
+            'new_employee':     '<span class="import-badge import-badge-create">+ Employee</span>',
+            'new_both':         '<span class="import-badge import-badge-create">+ Both</span>',
+            'reassign':         '<span class="import-badge import-badge-reassign">Reassign</span>',
+            'already_assigned': '<span class="import-badge import-badge-dup">Assigned</span>'
         };
         return map[status] || '<span class="import-badge">' + status + '</span>';
     },
@@ -690,8 +1119,23 @@ const Import = {
      */
     async showImportInfo(type) {
         const isAssets = type === 'assets';
+        const isAssignments = type === 'assignments';
 
-        const columns = isAssets ? [
+        const columns = isAssignments ? [
+            { name: 'Serial_Number', required: true, aliases: 'serial_number, serial, sn' },
+            { name: 'Category', required: true, aliases: 'category, type, asset type' },
+            { name: 'Employee_ID', required: true, aliases: 'employee_id, emp_id' },
+            { name: 'Full_Name', required: true, aliases: 'full_name, name, assigned_to' },
+            { name: 'Brand', required: false, aliases: 'brand, manufacturer, make' },
+            { name: 'Model', required: false, aliases: 'model, model name' },
+            { name: 'Asset_Tag', required: false, aliases: 'asset_tag, tag' },
+            { name: 'Email', required: false, aliases: 'email, e-mail' },
+            { name: 'Position', required: false, aliases: 'position, title, role' },
+            { name: 'Department', required: false, aliases: 'department, dept' },
+            { name: 'Location', required: false, aliases: 'location, table, seat' },
+            { name: 'Assigned_Date', required: false, aliases: 'assigned_date, date' },
+            { name: 'Notes', required: false, aliases: 'notes, remarks, comments' }
+        ] : isAssets ? [
             { name: 'Name', required: false, aliases: 'name, asset name' },
             { name: 'Serial_Number', required: true, aliases: 'serial_number, serial, sn' },
             { name: 'Category', required: true, aliases: 'category, type, asset type' },
@@ -711,7 +1155,16 @@ const Import = {
             { name: 'Position', required: false, aliases: 'position, title, job title' }
         ];
 
-        const rules = isAssets ? [
+        const rules = isAssignments ? [
+            'Each row represents one asset-to-employee assignment',
+            'If the asset (Serial Number) does not exist, it will be auto-created',
+            'If the employee (Employee ID) does not exist, it will be auto-created',
+            'Full_Name is required when the employee is not yet in the system',
+            'Category is used when auto-creating assets (defaults to first category)',
+            'Assets already assigned to a different employee will be flagged as "Reassign"',
+            'Existing assignments can be overwritten (update notes/date)',
+            'Department and Location names must match existing values (optional)'
+        ] : isAssets ? [
             'Category must exist in the system before import',
             'Serial numbers should be unique',
             'Dates should be in format: YYYY-MM-DD or MM/DD/YYYY',

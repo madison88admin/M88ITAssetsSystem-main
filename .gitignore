@@ -55,6 +55,9 @@ test-results/
 .netlify/
 .vercel/
 
+
+.database/
+.sample-data/
 # Configuration (if contains sensitive data)
 # Uncomment if your config.js has credentials
 # src/scripts/config.js

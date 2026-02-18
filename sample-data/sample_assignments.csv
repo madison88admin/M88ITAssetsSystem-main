@@ -1,0 +1,17 @@
+Serial_Number,Category,Brand,Model,Asset_Name,Asset_Tag,Employee_ID,Full_Name,Email,Position,Department,Location,Notes,Assigned_Date
+DL5520-001234,Laptop,Dell,Latitude 5520,Dell Latitude Laptop,M88-2602-00001,EMP001,John Doe,john@example.com,Manager,Costing,T1,Standard work laptop,2026-01-15
+HPE24-789012,Monitor,HP,E24 G4,HP E24 Monitor,M88-2602-00002,EMP002,Jane Smith,jane@example.com,Associate,HR,T5,Desk monitor for HR team,2026-01-16
+LGK-556789,Keyboard,Logitech,K780,Logitech Wireless Keyboard,M88-2602-00004,EMP003,Bob Johnson,bob@example.com,Analyst,IT,T3,Wireless keyboard,2026-01-17
+APMK-012345,Keyboard,Apple,Magic Keyboard,Apple Magic Keyboard,M88-2602-00020,EMP004,Alice Williams,alice@example.com,Coordinator,Admin,T2,Keyboard for admin desk,2026-01-18
+IMPORT-LAPTOP-01,Laptop,Lenovo,ThinkPad X1 Carbon,Lenovo X1 Carbon,,EMP001,John Doe,john@example.com,Manager,Costing,T1,New laptop for project lead,2026-02-01
+IMPORT-MOUSE-01,Mouse,Logitech,MX Master 3S,Logitech MX Master 3S,,EMP003,Bob Johnson,bob@example.com,Analyst,IT,T3,Ergonomic mouse for IT desk,2026-02-01
+IMPORT-MON-01,Monitor,Samsung,Odyssey G7,Samsung Odyssey G7,,EMP002,Jane Smith,jane@example.com,Associate,HR,T5,Widescreen for presentations,2026-02-02
+HPLJ-123456,Printer,HP,LaserJet Pro M404dn,HP LaserJet Printer,M88-2602-00011,EMP-NEW01,Carlos Rivera,carlos@example.com,Technician,IT,T3,Shared floor printer,2026-02-03
+DLP24-112345,Monitor,Dell,P2422H,Dell P2422H Monitor,M88-2602-00010,EMP-NEW02,Diana Lee,diana@example.com,Designer,Admin,T2,Design team monitor,2026-02-04
+IMPORT-KB-01,Keyboard,Microsoft,Sculpt Ergonomic,Microsoft Sculpt Keyboard,,EMP-NEW01,Carlos Rivera,carlos@example.com,Technician,IT,T3,Ergonomic keyboard for new hire,2026-02-05
+IMPORT-DOCK-01,Laptop,Dell,WD19TBS Dock,Dell Thunderbolt Dock,,EMP-NEW03,Fatima Ahmed,fatima@example.com,Accountant,Costing,T1,Docking station for remote worker,2026-02-06
+DLU27-667890,Monitor,Dell,UltraSharp U2722DE,Dell Ultrasharp Monitor,M88-2602-00005,EMP004,Alice Williams,alice@example.com,Coordinator,Admin,T2,Reassigned to Alice,2026-02-07
+LTP14-101234,Laptop,Lenovo,ThinkPad T14,Lenovo ThinkPad Laptop,M88-2602-00009,EMP001,John Doe,john@example.com,Manager,Costing,T1,Reassigned to John,2026-02-08
+DL5520-001234,Laptop,Dell,Latitude 5520,Dell Latitude Laptop,M88-2602-00001,EMP001,John Doe,john@example.com,Manager,Costing,T1,Updated notes for existing assignment,2026-02-10
+DL5520-001234,,,,,,,,,,,,,,
+,,,,,,,EMP009-BOGUS,,,,,,

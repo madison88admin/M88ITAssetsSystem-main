@@ -293,6 +293,31 @@
 
     <div id="toast-container"></div>
 
+    <!-- Active Assignments Warning Modal -->
+    <div id="active-assignments-modal" class="modal-overlay hidden">
+        <div class="modal max-w-md">
+            <div class="modal-header">
+                <h3 class="modal-title text-yellow-400">Cannot Deactivate Employee</h3>
+                <button onclick="closeActiveAssignmentsModal()" class="text-slate-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body space-y-4">
+                <div class="flex items-start gap-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <svg class="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <p class="text-slate-300 text-sm" id="active-assignments-message">This employee has active assigned assets. All assets must be returned first before this employee can be marked as inactive.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeActiveAssignmentsModal()">Close</button>
+                <a id="view-assignments-link" href="#" class="btn btn-primary">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    View Assigned Assets
+                </a>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { supabase } from '../scripts/config.js';
         import { showToast } from '../scripts/components.js';
@@ -601,8 +626,27 @@
             e.preventDefault();
             const id = document.getElementById('employee-id').value;
             const employeeIdInput = document.getElementById('employee-emp-id').value;
-            
-            // Check for duplicate employee ID
+            const newStatus = document.getElementById('employee-status').value;
+
+            // If marking an existing employee inactive, check for active assignments first
+            if (id && newStatus === 'inactive') {
+                const { data: activeAssignments } = await supabase
+                    .from('asset_assignments')
+                    .select('id')
+                    .eq('employee_id', id)
+                    .is('returned_date', null)
+                    .limit(1);
+
+                if (activeAssignments && activeAssignments.length > 0) {
+                    const empName = document.getElementById('employee-name').value;
+                    document.getElementById('active-assignments-message').textContent =
+                        `"${empName}" has active assigned assets. All assets must be returned first before this employee can be marked as inactive.`;
+                    document.getElementById('view-assignments-link').href =
+                        `assignments.html?employee=${encodeURIComponent(id)}`;
+                    document.getElementById('active-assignments-modal').classList.remove('hidden');
+                    return;
+                }
+            }
             const isDuplicate = await checkDuplicateEmployeeId(employeeIdInput, id);
             if (isDuplicate) {
                 showToast('An employee with this employee number already exists', 'error');
@@ -640,6 +684,10 @@
                 closeEmployeeModal();
                 loadEmployees();
             }, id ? 'Updating...' : 'Saving...');
+        };
+
+        window.closeActiveAssignmentsModal = () => {
+            document.getElementById('active-assignments-modal').classList.add('hidden');
         };
 
         window.deleteEmployee = (id, name) => { deleteId = id; document.getElementById('delete-info').textContent = name; document.getElementById('delete-modal').classList.remove('hidden'); };

@@ -11,13 +11,18 @@
     <!-- Custom Styles (includes Tailwind via build) -->
     <link rel="stylesheet" href="../styles/styles.css">
     
+    <!-- Vendor Libraries -->
+    <script type="module" src="../scripts/vendor-xlsx.js"></script>
+
     <!-- Application Modules -->
     <script type="module" src="../scripts/utils.js"></script>
+    <script type="module" src="../scripts/components.js"></script>
     <script src="../scripts/audit.js"></script>
     <script src="../scripts/auth.js"></script>
     <script type="module" src="../scripts/assets.js"></script>
     <script src="../scripts/employees.js"></script>
     <script src="../scripts/assignments.js"></script>
+    <script src="../scripts/import.js"></script>
 </head>
 <body>
     <div id="loading-screen">
@@ -90,6 +95,13 @@
                     <h2 class="text-lg font-semibold text-white">Asset Assignments</h2>
                 </div>
                 <div class="topbar-right" id="admin-actions-topbar">
+                    <div id="admin-actions-import">
+                        <button class="btn btn-secondary" onclick="showAssignmentImportInfo()">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            Import Assignments
+                        </button>
+                        <input type="file" id="import-assignments-file" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleImportAssignments(event)">
+                    </div>
                     <button class="btn btn-primary" onclick="openAssignModal()">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         Assign Asset
@@ -265,6 +277,17 @@
         </div>
     </div>
 
+    <!-- Loading Modal -->
+    <div id="loading-modal" class="modal-overlay hidden">
+        <div class="modal max-w-md">
+            <div class="modal-body text-center py-8">
+                <div class="spinner mx-auto mb-4"></div>
+                <h3 class="text-lg font-semibold text-white mb-2" id="loading-title">Processing...</h3>
+                <p class="text-slate-400" id="loading-message">Please wait while we process your request.</p>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
 
     <script type="module">
@@ -275,7 +298,8 @@
         let currentPage = 1;
         let totalPages = 1;
         const pageSize = 10;
-        
+        let employeeFilter = null; // set when navigated from Employees page via ?employee=
+
         // Use Assignments module (available globally)
         const Assignments = window.Assignments;
 
@@ -299,8 +323,48 @@
                 return;
             }
 
+            // Check import permission for IT staff
+            if (currentUser.role === 'it_staff') {
+                try {
+                    const { data: setting } = await supabase
+                        .from('system_settings')
+                        .select('setting_value')
+                        .eq('setting_key', 'it_staff_can_import_data')
+                        .single();
+
+                    if (setting && setting.setting_value === 'false') {
+                        const importActions = document.getElementById('admin-actions-import');
+                        if (importActions) importActions.classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error('Error checking import permission:', error);
+                }
+            }
+
             // Set today's date as default
             document.getElementById('assign-date').value = new Date().toISOString().split('T')[0];
+
+            // Check for ?employee= URL param (deep-link from Employees page)
+            const urlParams = new URLSearchParams(window.location.search);
+            const empParam = urlParams.get('employee');
+            if (empParam) {
+                employeeFilter = empParam;
+                // Force active-only so the user sees what needs returning
+                document.getElementById('status-filter').value = 'active';
+                // Show a dismissable banner
+                const banner = document.createElement('div');
+                banner.id = 'employee-filter-banner';
+                banner.className = 'mx-6 mt-4 flex items-center justify-between gap-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-300';
+                banner.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+                        <span id="employee-filter-banner-text">Showing active assignments for this employee &mdash; return all assets to allow deactivation.</span>
+                    </div>
+                    <button onclick="clearEmployeeFilter()" class="text-slate-400 hover:text-yellow-300 shrink-0" title="Clear filter">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>`;
+                document.querySelector('.page-content').prepend(banner);
+            }
 
             await loadStats();
             await loadAssignments();
@@ -348,6 +412,9 @@
             // Apply region filter
             const regionId = currentUser.region_id || null;
             if (regionId) query = query.eq('region_id', regionId);
+
+            // Apply employee deep-link filter (from Employees page deactivation flow)
+            if (employeeFilter) query = query.eq('employee_id', employeeFilter);
 
             if (filter === 'active') query = query.is('returned_date', null);
             else if (filter === 'returned') query = query.not('returned_date', 'is', null);
@@ -768,6 +835,237 @@
         };
 
         window.loadAssignments = loadAssignments;
+
+        window.clearEmployeeFilter = function() {
+            employeeFilter = null;
+            const banner = document.getElementById('employee-filter-banner');
+            if (banner) banner.remove();
+            // Remove ?employee param from URL without triggering a reload
+            const url = new URL(window.location);
+            url.searchParams.delete('employee');
+            window.history.replaceState({}, '', url);
+            loadAssignments();
+        };
+
+        // ===========================================
+        // LOADING MODAL HELPERS
+        // ===========================================
+
+        function showLoadingModal(title, message) {
+            document.getElementById('loading-title').textContent = title;
+            document.getElementById('loading-message').textContent = message;
+            document.getElementById('loading-modal').classList.remove('hidden');
+        }
+
+        function hideLoadingModal() {
+            document.getElementById('loading-modal').classList.add('hidden');
+        }
+
+        // ===========================================
+        // ASSIGNMENT IMPORT
+        // ===========================================
+
+        window.showAssignmentImportInfo = async function() {
+            if (window.Import && typeof window.Import.showImportInfo === 'function') {
+                const proceed = await window.Import.showImportInfo('assignments');
+                if (proceed) {
+                    document.getElementById('import-assignments-file').click();
+                }
+            } else {
+                document.getElementById('import-assignments-file').click();
+            }
+        };
+
+        window.handleImportAssignments = async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = '';
+
+            try {
+                showLoadingModal('Validating Import', 'Reading file and checking data...');
+
+                const XLSX = window.XLSX;
+                if (!XLSX) {
+                    hideLoadingModal();
+                    showToast('Please wait, loading import library...', 'info');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    showLoadingModal('Validating Import', 'Reading file and checking data...');
+                }
+
+                // Parse file
+                const jsonData = await window.Import.parseFile(file);
+
+                if (!jsonData || !jsonData.length) {
+                    hideLoadingModal();
+                    showToast('No data found in file', 'error');
+                    return;
+                }
+
+                // Validate against database
+                document.getElementById('loading-message').textContent = 'Validating ' + jsonData.length + ' rows against database...';
+                const validation = await window.Import.validateAssignmentImport(jsonData, supabase);
+
+                hideLoadingModal();
+
+                if (validation.error) {
+                    showToast(validation.error, 'error');
+                    return;
+                }
+
+                // Show preview modal — user selects which rows to import
+                const { action, selectedRows } = await window.Import.showValidationPreview(validation, 'assignments');
+
+                if (action === 'cancel' || selectedRows.length === 0) {
+                    if (action !== 'cancel') showToast('No records selected for import', 'info');
+                    return;
+                }
+
+                // Proceed with actual import
+                showLoadingModal('Importing Assignments', 'Processing ' + selectedRows.length + ' records...');
+
+                const Assets = window.Assets;
+                const Employees = window.Employees;
+                let success = 0;
+                let failed = 0;
+                const errors = [];
+
+                // Cache newly created records within this import session so that
+                // multiple rows sharing the same new employee/asset don't try to
+                // create the same record twice.
+                const createdAssetCache = {};   // serial_number (lower) → id
+                const createdEmployeeCache = {}; // employee_id  (lower) → id
+
+                for (let i = 0; i < selectedRows.length; i++) {
+                    const row = selectedRows[i];
+                    document.getElementById('loading-message').textContent =
+                        'Processing record ' + (i + 1) + ' of ' + selectedRows.length + '...';
+
+                    try {
+                        let assetId = row._existingAssetId;
+                        let employeeId = row._existingEmployeeId;
+
+                        // Auto-create asset if needed
+                        if (!assetId && row.assetData) {
+                            const serialKey = (row.assetData.serial_number || '').toLowerCase();
+                            if (createdAssetCache[serialKey]) {
+                                // Already created by an earlier row in this import
+                                assetId = createdAssetCache[serialKey];
+                            } else {
+                                const result = await Assets.create({
+                                    ...row.assetData,
+                                    region_id: currentUser.region_id || null,
+                                    created_by: currentUser.id || null,
+                                    logged_by: currentUser.id || null
+                                });
+                                if (!result.success) {
+                                    throw new Error('Failed to create asset: ' + result.error);
+                                }
+                                assetId = result.data.id;
+                                createdAssetCache[serialKey] = assetId;
+                            }
+                        }
+
+                        // Auto-create employee if needed
+                        if (!employeeId && row.employeeData) {
+                            const empKey = (row.employeeData.employee_id || '').toLowerCase();
+                            if (createdEmployeeCache[empKey]) {
+                                // Already created by an earlier row in this import
+                                employeeId = createdEmployeeCache[empKey];
+                            } else {
+                                const result = await Employees.create({
+                                    ...row.employeeData,
+                                    region_id: currentUser.region_id || null,
+                                    created_by: currentUser.id || null
+                                });
+                                if (!result.success) {
+                                    throw new Error('Failed to create employee: ' + result.error);
+                                }
+                                employeeId = result.data.id;
+                                createdEmployeeCache[empKey] = employeeId;
+                            }
+                        }
+
+                        // Handle reassignment: return from current employee first
+                        if (row._action === 'reassign' && row._currentAssignmentId) {
+                            const unResult = await Assignments.unassign(row._currentAssignmentId, 'Reassigned via import');
+                            if (!unResult.success) {
+                                throw new Error('Failed to unassign from current employee: ' + unResult.error);
+                            }
+                            // Asset is now 'available' after unassign
+                        }
+
+                        // Handle overwrite of existing assignment (same employee)
+                        if (row._action === 'already_assigned' && row._currentAssignmentId) {
+                            const updates = {};
+                            if (row.assignmentData.notes) updates.notes = row.assignmentData.notes;
+                            if (row.assignmentData.assigned_date) updates.assigned_date = row.assignmentData.assigned_date;
+                            if (Object.keys(updates).length > 0) {
+                                const { error: updateError } = await supabase
+                                    .from('asset_assignments')
+                                    .update(updates)
+                                    .eq('id', row._currentAssignmentId);
+                                if (updateError) throw new Error('Failed to update assignment: ' + updateError.message);
+                            }
+                            success++;
+                            continue;
+                        }
+
+                        // For new / new_asset / new_employee / new_both / reassign: create assignment
+                        // Make sure asset is available before assigning
+                        if (row._action !== 'reassign') {
+                            // For non-reassign cases, the asset might not be 'available' 
+                            const { data: assetCheck } = await supabase.from('assets').select('status').eq('id', assetId).single();
+                            if (assetCheck && assetCheck.status !== 'available') {
+                                await supabase.from('assets').update({ status: 'available' }).eq('id', assetId);
+                            }
+                        }
+
+                        const assignResult = await Assignments.assign({
+                            assetId,
+                            employeeId,
+                            notes: row.assignmentData?.notes || 'Imported via bulk assignment',
+                            assignedBy: currentUser.id
+                        });
+
+                        if (!assignResult.success) {
+                            throw new Error(assignResult.error);
+                        }
+
+                        success++;
+                    } catch (err) {
+                        failed++;
+                        errors.push({
+                            serial: row.mapped?.serial_number || 'N/A',
+                            employee: row.mapped?.employee_id || 'N/A',
+                            error: err.message
+                        });
+                        console.error('Import row error:', err);
+                    }
+                }
+
+                hideLoadingModal();
+
+                if (failed > 0) {
+                    showToast('Imported ' + success + ' assignments, ' + failed + ' failed', 'warning');
+                    if (errors.length > 0) {
+                        console.table(errors);
+                    }
+                } else {
+                    showToast('Successfully imported ' + success + ' assignments', 'success');
+                }
+
+                // Refresh page data
+                await loadStats();
+                await loadAssignments();
+                await loadAssetOptions();
+                await loadEmployeeOptions();
+            } catch (error) {
+                hideLoadingModal();
+                console.error('Import error:', error);
+                showToast('Import failed: ' + error.message, 'error');
+            }
+        };
+
         init();
     </script>
 </body>

@@ -495,7 +495,15 @@
         }
 
         async function loadAssetOptions() {
-            // Query assets directly, excluding decommissioned status
+            // Fetch asset IDs that are currently under investigation in Lost Assets
+            // so they can be excluded from the Maintenance dropdown.
+            const { data: activeLost } = await supabase
+                .from('lost_assets')
+                .select('asset_id')
+                .eq('status', 'under_investigation');
+            const lostAssetIds = new Set((activeLost || []).map(r => r.asset_id));
+
+            // Query assets directly, excluding decommissioned and lost-under-investigation
             let assetQ = supabase
                 .from('assets')
                 .select('id, asset_tag, name')
@@ -503,8 +511,12 @@
             const regionId = Auth.getRegionId();
             if (regionId) assetQ = assetQ.eq('region_id', regionId);
             const { data: assets } = await assetQ.order('asset_tag');
+
+            const filtered = (assets || []).filter(a => !lostAssetIds.has(a.id));
             const select = document.getElementById('maint-asset');
-            select.innerHTML = '<option value="">Select an asset</option>' + (assets || []).map(a => `<option value="${a.id}">${a.name} (${a.asset_tag})</option>`).join('');        }
+            select.innerHTML = '<option value="">Select an asset</option>' +
+                filtered.map(a => `<option value="${a.id}">${a.name} (${a.asset_tag})</option>`).join('');
+        }
 
         async function loadDamagedAssets() {
             let dmgQ = supabase
@@ -676,6 +688,20 @@
             const id = document.getElementById('record-id').value;
             const assetId = document.getElementById('maint-asset').value;
             const status = document.getElementById('maint-status').value;
+
+            // Block if this asset has an active Lost Assets record (under investigation)
+            if (assetId && !id) {
+                const { data: lostCheck } = await supabase
+                    .from('lost_assets')
+                    .select('id')
+                    .eq('asset_id', assetId)
+                    .eq('status', 'under_investigation')
+                    .limit(1);
+                if (lostCheck && lostCheck.length > 0) {
+                    showToast('Cannot log maintenance — this asset is currently under investigation in Lost Assets.', 'error');
+                    return;
+                }
+            }
             
             const data = {
                 asset_id: assetId,
