@@ -16,10 +16,38 @@ const Components = {
     
     /**
      * Show loading screen
+     * @param {string} message - Loading message (optional)
+     * @param {boolean} showCancel - Show cancel button (optional)
      */
-    showLoading() {
+    showLoading(message = 'Loading...', showCancel = false) {
         const loader = Utils.$('loading-screen');
         if (loader) {
+            // Update message if provided
+            const messageEl = loader.querySelector('p');
+            if (messageEl && message) {
+                messageEl.textContent = message;
+            }
+            
+            // Add or remove cancel button
+            let cancelBtn = loader.querySelector('.loading-cancel-btn');
+            if (showCancel && !cancelBtn) {
+                cancelBtn = Utils.createElement('button', {
+                    className: 'loading-cancel-btn mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white text-sm transition-colors',
+                    onclick: () => {
+                        if (window.Import) {
+                            window.Import.cancelImport();
+                        }
+                    }
+                }, 'Cancel Import');
+                
+                const container = loader.querySelector('.text-center');
+                if (container) {
+                    container.appendChild(cancelBtn);
+                }
+            } else if (!showCancel && cancelBtn) {
+                cancelBtn.remove();
+            }
+            
             loader.classList.remove('hidden');
             loader.classList.add('flex');
         }
@@ -33,6 +61,18 @@ const Components = {
         if (loader) {
             loader.classList.add('hidden');
             loader.classList.remove('flex');
+            
+            // Remove cancel button
+            const cancelBtn = loader.querySelector('.loading-cancel-btn');
+            if (cancelBtn) {
+                cancelBtn.remove();
+            }
+            
+            // Reset message
+            const messageEl = loader.querySelector('p');
+            if (messageEl) {
+                messageEl.textContent = 'Loading...';
+            }
         }
     },
     
@@ -567,5 +607,5 @@ window.Components = Components;
 // ES Module exports
 export { Components };
 export const showToast = (message, type, duration) => Components.showToast(message, type, duration);
-export const showLoading = () => Components.showLoading();
+export const showLoading = (message, showCancel) => Components.showLoading(message, showCancel);
 export const hideLoading = () => Components.hideLoading();

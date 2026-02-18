@@ -21,6 +21,8 @@
     
     <!-- Application Modules -->
     <script type="module" src="../scripts/utils.js"></script>
+    <script type="module" src="../scripts/components.js"></script>
+    <script src="../scripts/import.js"></script>
     <script src="../scripts/audit.js"></script>
     <script src="../scripts/auth.js"></script>
     <script type="module" src="../scripts/assets.js"></script>
@@ -253,7 +255,7 @@
                             <span class="text-slate-400 font-normal ml-2" id="assets-count">(0 items)</span>
                         </h3>
                         <div class="flex gap-2" id="admin-actions-import">
-                            <button class="btn btn-sm btn-secondary" onclick="document.getElementById('import-file').click()">
+                            <button class="btn btn-sm btn-secondary" onclick="showAssetImportInfo()">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                 </svg>
@@ -1439,6 +1441,18 @@
             } catch (error) {
                 hideLoadingModal();
                 showToast('Export failed: ' + error.message, 'error');
+            }
+        };
+
+        window.showAssetImportInfo = async function() {
+            if (window.Import && typeof window.Import.showImportInfo === 'function') {
+                const proceed = await window.Import.showImportInfo('assets');
+                if (proceed) {
+                    document.getElementById('import-file').click();
+                }
+            } else {
+                // Fallback if Import module is not loaded
+                document.getElementById('import-file').click();
             }
         };
 

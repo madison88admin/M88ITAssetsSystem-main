@@ -9,6 +9,12 @@
 
 const Import = {
     // ===========================================
+    // STATE
+    // ===========================================
+    
+    _importCancelled: false,
+    
+    // ===========================================
     // FILE PARSING
     // ===========================================
     
@@ -60,11 +66,16 @@ const Import = {
      * @returns {Promise<object>} Import result
      */
     async importAssets(file) {
-        Components.showLoading();
+        this._importCancelled = false;
+        Components.showLoading('Importing assets...', true); // Show with cancel button
         
         try {
             // Parse file
             const rawData = await this.parseFile(file);
+            
+            if (this._importCancelled) {
+                return { success: false, error: 'Import cancelled by user' };
+            }
             
             if (!rawData || rawData.length === 0) {
                 throw new Error('No data found in file');
@@ -72,6 +83,10 @@ const Import = {
             
             // Validate and transform data
             const { validData, errors } = await this.validateAssetData(rawData);
+            
+            if (this._importCancelled) {
+                return { success: false, error: 'Import cancelled by user' };
+            }
             
             if (validData.length === 0) {
                 return {
@@ -217,16 +232,25 @@ const Import = {
      * @returns {Promise<object>} Import result
      */
     async importEmployees(file) {
-        Components.showLoading();
+        this._importCancelled = false;
+        Components.showLoading('Importing employees...', true); // Show with cancel button
         
         try {
             const rawData = await this.parseFile(file);
+            
+            if (this._importCancelled) {
+                return { success: false, error: 'Import cancelled by user' };
+            }
             
             if (!rawData || rawData.length === 0) {
                 throw new Error('No data found in file');
             }
             
             const { validData, errors } = await this.validateEmployeeData(rawData);
+            
+            if (this._importCancelled) {
+                return { success: false, error: 'Import cancelled by user' };
+            }
             
             if (validData.length === 0) {
                 return {
@@ -429,6 +453,120 @@ const Import = {
     // ===========================================
     // UI HELPERS
     // ===========================================
+    
+    /**
+     * Cancel ongoing import
+     */
+    cancelImport() {
+        this._importCancelled = true;
+        Components.hideLoading();
+        Components.showToast('Import cancelled', 'info');
+    },
+    
+    /**
+     * Show import info before file selection
+     * @param {string} type - 'assets' or 'employees'
+     * @returns {Promise<boolean>} True if user wants to proceed
+     */
+    async showImportInfo(type) {
+        const isAssets = type === 'assets';
+        
+        const columns = isAssets ? [
+            { name: 'Name', required: false, aliases: 'name, asset name' },
+            { name: 'Serial_Number', required: true, aliases: 'serial_number, serial, sn' },
+            { name: 'Category', required: true, aliases: 'category, type, asset type' },
+            { name: 'Brand', required: false, aliases: 'brand, manufacturer, make' },
+            { name: 'Model', required: false, aliases: 'model, model name' },
+            { name: 'Purchase_Date', required: false, aliases: 'purchase_date, date purchased' },
+            { name: 'Vendor', required: false, aliases: 'vendor, supplier' },
+            { name: 'Warranty_End', required: false, aliases: 'warranty_end_date, warranty end' },
+            { name: 'Department', required: false, aliases: 'department, dept' },
+            { name: 'Notes', required: false, aliases: 'notes, remarks, comments' }
+        ] : [
+            { name: 'Employee_ID', required: true, aliases: 'employee_id, emp_id, id' },
+            { name: 'Full_Name', required: true, aliases: 'full_name, name' },
+            { name: 'Email', required: false, aliases: 'email, e-mail' },
+            { name: 'Department', required: false, aliases: 'department, dept' },
+            { name: 'Location', required: false, aliases: 'location, table, seat' },
+            { name: 'Position', required: false, aliases: 'position, title, job title' }
+        ];
+        
+        const rules = isAssets ? [
+            'Category must exist in the system before import',
+            'Serial numbers should be unique',
+            'Dates should be in format: YYYY-MM-DD or MM/DD/YYYY',
+            'All imported assets will have "Available" status',
+            'Department names must match existing departments (optional)'
+        ] : [
+            'Employee IDs should be unique',
+            'Department names must match existing departments (optional)',
+            'Location names must match existing locations (optional)',
+            'Status will be set to "Active" by default'
+        ];
+        
+        const columnRows = columns.map(col => `
+            <tr>
+                <td class="py-2 px-3 border-b border-slate-700">
+                    <span class="font-medium ${col.required ? 'text-red-400' : 'text-slate-300'}">
+                        ${col.name}${col.required ? ' *' : ''}
+                    </span>
+                </td>
+                <td class="py-2 px-3 border-b border-slate-700 text-sm text-slate-400">
+                    ${col.aliases}
+                </td>
+            </tr>
+        `).join('');
+        
+        const ruleItems = rules.map(rule => `
+            <li class="text-sm text-slate-300 mb-1">${rule}</li>
+        `).join('');
+        
+        const content = `
+            <div class="space-y-4">
+                <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-blue-300">
+                        <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        Accepted file formats: CSV, XLSX, XLS
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-300 mb-2" style="text-align: left;">Required Columns:</h4>
+                    <div class="bg-slate-800/50 rounded-lg overflow-hidden">
+                        <table class="w-full">
+                            <thead class="bg-slate-700/50">
+                                <tr>
+                                    <th class="py-2 px-3 text-left text-xs font-semibold text-slate-400 uppercase">Column Name</th>
+                                    <th class="py-2 px-3 text-left text-xs font-semibold text-slate-400 uppercase">Alternative Names</th>
+                                </tr>
+                            </thead>
+                            <tbody style="text-align: left;">
+                                ${columnRows}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-xs text-red-400 mt-2" style="text-align: left;">* Required fields</p>
+                </div>
+                
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-300 mb-2" style="text-align: left;">Import Rules:</h4>
+                    <ul class="list-disc list-inside space-y-1 bg-slate-800/50 rounded-lg p-3" style="text-align: left;">
+                        ${ruleItems}
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+        return Components.showModal({
+            title: `Import ${Utils.capitalize(type)} - Requirements`,
+            content,
+            confirmText: 'Continue to Select File',
+            cancelText: 'Cancel',
+            showCancel: true
+        });
+    },
     
     /**
      * Show import results modal
