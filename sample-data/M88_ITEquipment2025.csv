@@ -1,5 +1,5 @@
-Serial_Number,Category,Brand,Model,Asset_Name,Asset_Tag,Employee_ID,Full_Name,Email,Position,Department,Location,Notes,Assigned_Date
-9FWSTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Chris Asca�o,,Vice-President for Operations,Admin,T1,With Charger and Type C Dongle,9/2/2022
+﻿Serial_Number,Category,Brand,Model,Asset_Name,Asset_Tag,Employee_ID,Full_Name,Email,Position,Department,Location,Notes,Assigned_Date
+9FWSTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Chris Ascaño,,Vice-President for Operations,Admin,T1,With Charger and Type C Dongle,9/2/2022
 3K7TTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Mary Ann Del Monte,,Assoc. Purchasing Manager,Purchasing,T4,With Charger and Type C Dongle,9/12/2022
 HK7TTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Maricar Tanaleon,,Assoc. Purchasing Manager,Purchasing,,With Charger and Type C Dongle,9/12/2022
 52QSTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Mariane Castillo,,Sr. Purchasing Coordinator,Purchasing,,With Charger and Type C Dongle,9/12/2022
@@ -15,13 +15,13 @@ B52DHR3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Lovely Dela Cruz
 FGFHCK3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Laurence Obong,,HR & Admin Director,HR,T1,With Charger and Type C Dongle,4/2/2025
 9H7TTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Sherheen Rabano,,HR & Admin Manager,HR,T1,With Charger and Type C Dongle,9/2/2022
 JZ1TTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Dianne Tomale,,HR Coordinator,HR,T1,With Charger and Type C Dongle,9/2/2022
-JMLV5M3,Laptop,Dell,XPS 15 Core i7 set,DellXPS 15 Core i7 set,,,Arabelle Lea�o,,HRAD Associate,HR,T1,With Charger and Type C Dongle,6/20/2025
+JMLV5M3,Laptop,Dell,XPS 15 Core i7 set,DellXPS 15 Core i7 set,,,Arabelle Leaño,,HRAD Associate,HR,T1,With Charger and Type C Dongle,6/20/2025
 PF5PNYJA,Laptop,Lenovo,Thinkpad E16 U7,LenovoThinkpad E16 U7,,,Akeya Rodriguez,,Operations Assistant,HR,T1,With Charger,2/12/2026
 DG7TTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Michael Castillo,,Sr. Accounting Supervisor,Accounting,T2,With Charger and Type C Dongle,10/1/2022
 4NFHCK3,Laptop,Dell,XPS 15 Core i7 set,DellXPS 15 Core i7 set,,,Rhon Aldrin Lustre,,Jr. Accounting Supervisor,Accounting,T2,With Charger and Type C Dongle,9/11/2024
 DNFHCK3,Laptop,Dell,XPS 15 Core i7 set,DellXPS 15 Core i7 set,,,Wyssa Martinez,,Accounting Associate,Accounting,T2,With Charger and Type C Dongle,6/30/2025
 CRVFWT3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Lester Jay Mendoza,,System Administrator,IT,T2,With Charger and Type C Dongle,4/16/2024
-J16HCK3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Paul Avenda�o,,IT Systems Manager,IT,T1,With Charger and Type C Dongle,1/9/2026
+J16HCK3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Paul Avendaño,,IT Systems Manager,IT,T1,With Charger and Type C Dongle,1/9/2026
 873DHR3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Elaine Sanchez,,Sr. Logistics Supervisor,Logistics,T5,With Charger and Type C Dongle,12/16/2022
 2MXQTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Edbert Suan,,Jr. Logistics Supervisor,Logistics,T5,With Charger and Type C Dongle,8/23/2022
 8S5DHR3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Arianne Saludo,,Jr. Logistics Coordinator,Logistics,T5,With Charger and Type C Dongle,3/9/2023
@@ -44,3 +44,4 @@ BH0VMN3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Angelah Peregrin
 7D0VMN3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Vanessa Deseo,,Production Planning Assistant,Planning,T6,With Charger and Type C Dongle,10/24/2025
 7LLTTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Maybelyn Amagsila,,Planning Supervisor,Planning,T6,With Charger and Type C Dongle,12/9/2025
 93QSTQ3,Laptop,Dell,XPS 15 Core i9 set,DellXPS 15 Core i9 set,,,Patrick Maaliw,,Planning Staff,Planning,,With Charger and Type C Dongle,7/4/2023
+9FWSTQ3a,Laptop,Lenovo,XPS 15 Core i9,Lenovo XPS 15 Core i9,,aqwa,Chris Ascaño,,Vice-President for Operations,Admin,T1,With Charger and Type C Dongle,9/2/2022
