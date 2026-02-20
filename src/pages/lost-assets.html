@@ -64,7 +64,7 @@
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                         </svg>
-                        Assets
+                        IT Equipments
                     </a>
                     <a href="employees.html" class="nav-link">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,6 +130,12 @@
                         </svg>
                         Settings
                     </a>
+                    <a href="user-maintenance.html" class="nav-link" id="user-maintenance-link">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        User Maintenance
+                    </a>
                 </div>
             </nav>
             
@@ -163,6 +169,7 @@
                         </svg>
                     </button>
                     <h2 class="text-lg font-semibold text-white">Lost Assets</h2>
+                    <span id="exec-region-label" class="hidden ml-3 text-sm text-slate-400 font-normal"></span>
                 </div>
                 <div class="topbar-right">
                     <button class="btn btn-primary" onclick="openLostAssetModal()">
@@ -487,10 +494,20 @@
                 // Setup navigation visibility based on role and permissions
                 await Utils.setupNavigation(currentUser, supabase);
                 
-                // Redirect viewers and executives to dashboard
-                if (currentUser.role === 'viewer' || currentUser.role === 'executive') {
+                // Redirect viewers and pure executives to dashboard (exec+admin can access)
+                if (currentUser.role === 'viewer' || (currentUser.role === 'executive' && !currentUser.isExecAdmin)) {
                     window.location.href = 'dashboard.html';
                     return;
+                }
+
+                // Show region label for exec+admin
+                if (currentUser.isExecAdmin && currentUser.region_id) {
+                    const { data: region } = await supabase.from('regions').select('name').eq('id', currentUser.region_id).single();
+                    const label = document.getElementById('exec-region-label');
+                    if (label && region) {
+                        label.textContent = `${region.name}`;
+                        label.classList.remove('hidden');
+                    }
                 }
 
                 // Set default date to today

@@ -11,6 +11,9 @@ const Auth = {
     // Current user data
     user: null,
     profile: null,
+    userRoles: [],
+    userRegionIds: [],
+    userRegions: [],
     
     // ===========================================
     // INITIALIZATION
@@ -176,10 +179,40 @@ const Auth = {
             this.profile = data;
             Utils.storage.set('m88_user_profile', data);
             
+            // Load junction table data (roles and regions)
+            await this.loadJunctionData();
+            
             return data;
         } catch (error) {
             console.error('Load profile error:', error);
             return null;
+        }
+    },
+
+    /**
+     * Load user roles and regions from junction tables
+     */
+    async loadJunctionData() {
+        if (!this.user) return;
+        try {
+            const [rolesRes, regionsRes] = await Promise.all([
+                window.supabase.from('user_roles').select('role').eq('user_id', this.user.id),
+                window.supabase.from('user_regions').select('region_id, region:regions(id, name, code)').eq('user_id', this.user.id)
+            ]);
+            this.userRoles = (rolesRes.data || []).map(r => r.role);
+            this.userRegions = (regionsRes.data || []).map(r => r.region);
+            this.userRegionIds = this.userRegions.map(r => r.id);
+            // Fallback to legacy columns
+            if (this.userRoles.length === 0 && this.profile?.role) {
+                this.userRoles = [this.profile.role];
+            }
+            if (this.userRegionIds.length === 0 && this.profile?.region_id) {
+                this.userRegionIds = [this.profile.region_id];
+            }
+        } catch (e) {
+            console.warn('Junction table load failed, using legacy columns:', e);
+            if (this.profile?.role) this.userRoles = [this.profile.role];
+            if (this.profile?.region_id) this.userRegionIds = [this.profile.region_id];
         }
     },
     
@@ -267,7 +300,18 @@ const Auth = {
         if (!this.profile) return false;
         
         const roleArray = Array.isArray(roles) ? roles : [roles];
-        return roleArray.includes(this.profile.role);
+        // Check junction table roles first, fall back to profile.role
+        const effectiveRoles = this.userRoles.length > 0 ? this.userRoles : [this.profile.role];
+        return roleArray.some(r => effectiveRoles.includes(r));
+    },
+
+    /**
+     * Check if user has both executive and admin roles (exec+admin dual role)
+     * @returns {boolean}
+     */
+    isExecAdmin() {
+        const roles = this.userRoles.length > 0 ? this.userRoles : [this.profile?.role];
+        return roles.includes('executive') && roles.includes('admin');
     },
     
     /**
@@ -342,6 +386,8 @@ const Auth = {
      * @returns {boolean} Has all-region access
      */
     hasAllRegionAccess() {
+        // Executive and exec+admin both have all-region viewing access (dashboard, reports)
+        // For admin operations, exec+admin uses their assigned region via getRegionId()
         return this.isExecutive() || !this.profile?.region_id;
     },
     

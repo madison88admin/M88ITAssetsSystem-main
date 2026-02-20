@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assets - Madison 88 IT Asset Management</title>
+    <title>IT Equipments - Madison 88 IT Asset Management</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/images/favicon.png">
@@ -34,7 +34,7 @@
     <div id="loading-screen">
         <div class="text-center">
             <div class="spinner mx-auto mb-4"></div>
-            <p class="text-slate-400">Loading Assets...</p>
+            <p class="text-slate-400">Loading IT Equipments...</p>
         </div>
     </div>
 
@@ -77,7 +77,7 @@
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                         </svg>
-                        Assets
+                        IT Equipments
                     </a>
                     <a href="employees.html" class="nav-link">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,6 +143,12 @@
                         </svg>
                         Settings
                     </a>
+                    <a href="user-maintenance.html" class="nav-link" id="user-maintenance-link">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        User Maintenance
+                    </a>
                 </div>
             </nav>
             
@@ -177,7 +183,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
                     </button>
-                    <h2 class="text-lg font-semibold text-white">Assets</h2>
+                    <h2 class="text-lg font-semibold text-white">IT Equipments</h2>
+                    <span id="exec-region-label" class="hidden ml-3 text-sm text-slate-400 font-normal"></span>
                 </div>
                 <div class="topbar-right" id="admin-actions-topbar">
                     <button class="btn btn-primary" onclick="openAssetModal()">
@@ -193,7 +200,7 @@
             <div class="page-content">
                 <!-- Page Header -->
                 <div class="page-header">
-                    <h1 class="page-title">IT Assets</h1>
+                    <h1 class="page-title">IT Equipments Management</h1>
                     <p class="page-subtitle">Manage all IT equipment and assets</p>
                 </div>
 
@@ -215,6 +222,13 @@
                                         oninput="handleSearch(this.value)"
                                     >
                                 </div>
+                            </div>
+                            
+                            <!-- Region Filter (Exec+Admin only) -->
+                            <div id="region-filter-container" class="hidden">
+                                <select id="region-filter" class="form-select" onchange="handleFilter()">
+                                    <option value="">All My Regions</option>
+                                </select>
                             </div>
                             
                             <!-- Status Filter -->
@@ -240,7 +254,7 @@
                             <!-- Location Filter -->
                             <div>
                                 <select id="location-filter" class="form-select" onchange="handleFilter()">
-                                    <option value="">All Locations</option>
+                                    <option value="">All Table Assignments</option>
                                 </select>
                             </div>
                         </div>
@@ -251,7 +265,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            Assets List
+                            IT Equipments List
                             <span class="text-slate-400 font-normal ml-2" id="assets-count">(0 items)</span>
                         </h3>
                         <div class="flex gap-2" id="admin-actions-import">
@@ -286,7 +300,7 @@
                             <tbody id="assets-table-body">
                                 <tr>
                                     <td colspan="7" class="text-center py-8 text-slate-400">
-                                        Loading assets...
+                                        Loading IT equipments...
                                     </td>
                                 </tr>
                             </tbody>
@@ -297,7 +311,7 @@
                     <div class="card-footer">
                         <div class="flex items-center justify-between">
                             <p class="text-sm text-slate-400" id="pagination-info">
-                                Showing 0 of 0 assets
+                                Showing 0 of 0 IT equipments
                             </p>
                             <div class="flex gap-2" id="pagination-buttons">
                                 <!-- Pagination buttons will be inserted here -->
@@ -344,9 +358,9 @@
                         
                         <!-- Location -->
                         <div class="form-group">
-                            <label class="form-label" for="asset-location">Location</label>
+                            <label class="form-label" for="asset-location">Table Assignment</label>
                             <select id="asset-location" class="form-select">
-                                <option value="">Select Location</option>
+                                <option value="">Select Table Assignment</option>
                             </select>
                         </div>
                         
@@ -524,10 +538,20 @@
                 // Setup navigation visibility based on role and permissions
                 await Utils.setupNavigation(currentUser, supabase);
                 
-                // Redirect viewers and executives to dashboard
-                if (currentUser.role === 'viewer' || currentUser.role === 'executive') {
+                // Redirect viewers and pure executives to dashboard (exec+admin can access)
+                if (currentUser.role === 'viewer' || (currentUser.role === 'executive' && !currentUser.isExecAdmin)) {
                     window.location.href = 'dashboard.html';
                     return;
+                }
+
+                // Show region label for exec+admin
+                if (currentUser.isExecAdmin && currentUser.region_id) {
+                    const { data: region } = await supabase.from('regions').select('name').eq('id', currentUser.region_id).single();
+                    const label = document.getElementById('exec-region-label');
+                    if (label && region) {
+                        label.textContent = `${region.name}`;
+                        label.classList.remove('hidden');
+                    }
                 }
 
                 // Check import permission for IT staff
@@ -727,7 +751,7 @@
                 
                 document.getElementById('assets-count').textContent = `(${count || 0} items)`;
                 document.getElementById('pagination-info').textContent = 
-                    `Showing ${from + 1}-${Math.min(to + 1, count || 0)} of ${count || 0} assets`;
+                    `Showing ${from + 1}-${Math.min(to + 1, count || 0)} of ${count || 0} IT Equipments`;
 
                 if (!assets?.length) {
                     tableBody.innerHTML = `

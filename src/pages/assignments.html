@@ -50,7 +50,7 @@
                 </div>
                 <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
-                    <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>Assets</a>
+                    <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>IT Equipments</a>
                     <a href="employees.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Employees</a>
                     <a href="assignments.html" class="nav-link active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Assignments</a>
                 </div>
@@ -73,6 +73,7 @@
                 <div class="nav-section" id="admin-nav">
                     <p class="nav-section-title">Administration</p>
                     <a href="settings.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Settings</a>
+                    <a href="user-maintenance.html" class="nav-link" id="user-maintenance-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>User Maintenance</a>
                 </div>
             </nav>
             <div class="sidebar-footer">
@@ -93,6 +94,7 @@
                 <div class="topbar-left">
                     <button class="lg:hidden text-slate-400 hover:text-white" onclick="toggleSidebar()"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
                     <h2 class="text-lg font-semibold text-white">Asset Assignments</h2>
+                    <span id="exec-region-label" class="hidden ml-3 text-sm text-slate-400 font-normal"></span>
                 </div>
                 <div class="topbar-right" id="admin-actions-topbar">
                     <div id="admin-actions-import">
@@ -174,6 +176,7 @@
                             <thead>
                                 <tr>
                                     <th>Asset</th>
+                                    <th>Category</th>
                                     <th>Assigned To</th>
                                     <th>Department</th>
                                     <th>Assigned Date</th>
@@ -183,7 +186,7 @@
                                 </tr>
                             </thead>
                             <tbody id="assignments-table-body">
-                                <tr><td colspan="7" class="text-center py-8 text-slate-400">Loading...</td></tr>
+                                <tr><td colspan="8" class="text-center py-8 text-slate-400">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -317,10 +320,20 @@
             // Setup navigation visibility based on role and permissions
             await Utils.setupNavigation(currentUser, supabase);
             
-            // Redirect viewers and executives to dashboard
-            if (currentUser.role === 'viewer' || currentUser.role === 'executive') {
+            // Redirect viewers and pure executives to dashboard (exec+admin can access)
+            if (currentUser.role === 'viewer' || (currentUser.role === 'executive' && !currentUser.isExecAdmin)) {
                 window.location.href = 'dashboard.html';
                 return;
+            }
+
+            // Show region label for exec+admin
+            if (currentUser.isExecAdmin && currentUser.region_id) {
+                const { data: region } = await supabase.from('regions').select('name').eq('id', currentUser.region_id).single();
+                const label = document.getElementById('exec-region-label');
+                if (label && region) {
+                    label.textContent = `${region.name}`;
+                    label.classList.remove('hidden');
+                }
             }
 
             // Check import permission for IT staff
@@ -448,7 +461,7 @@
                 `Showing ${startRecord}-${endRecord} of ${count || 0} assignments`;
 
             if (!assignments?.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">No assignments found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-400">No assignments found</td></tr>';
                 updatePagination();
                 return;
             }
@@ -459,6 +472,7 @@
                         <p class="font-medium text-white">${a.asset_name || '-'}</p>
                         <p class="text-xs text-blue-400 font-mono">${a.asset_tag || '-'}</p>
                     </td>
+                    <td class="text-slate-300">${a.category_name || '-'}</td>
                     <td class="font-medium">${a.employee_name || '-'}</td>
                     <td>${a.department_name || '-'}</td>
                     <td>${a.assigned_date ? new Date(a.assigned_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '-'}</td>

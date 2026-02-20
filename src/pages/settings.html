@@ -41,7 +41,7 @@
                 </div>
                 <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
-                    <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>Assets</a>
+                    <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>IT Equipments</a>
                     <a href="employees.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Employees</a>
                     <a href="assignments.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Assignments</a>
                 </div>
@@ -64,6 +64,7 @@
                 <div class="nav-section" id="admin-nav">
                     <p class="nav-section-title">Administration</p>
                     <a href="settings.html" class="nav-link active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Settings</a>
+                    <a href="user-maintenance.html" class="nav-link" id="user-maintenance-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>User Maintenance</a>
                 </div>
             </nav>
             <div class="sidebar-footer">
@@ -95,7 +96,7 @@
 
                 <!-- Tabs -->
                 <div class="flex gap-2 mb-6 border-b border-slate-700 pb-4">
-                    <button onclick="switchTab('users')" id="tab-users" class="btn btn-primary">Users</button>
+                    <!-- <button onclick="switchTab('users')" id="tab-users" class="btn btn-primary">Users</button> -->
                     <button onclick="switchTab('permissions')" id="tab-permissions" class="btn btn-secondary">Permissions</button>
                     <button onclick="switchTab('assignment-rules')" id="tab-assignment-rules" class="btn btn-secondary">Assignment Rules</button>
                     <button onclick="switchTab('categories')" id="tab-categories" class="btn btn-secondary">Categories</button>
@@ -151,8 +152,8 @@
                     </div>
                 </div>
 
-                <!-- Users Section -->
-                <div id="section-users" class="settings-section">
+                <!-- Users Section (commented out — duplicate of User Maintenance page) -->
+                <!-- <div id="section-users" class="settings-section">
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">System Users</h3>
@@ -173,19 +174,19 @@
                             </table>
                         </div>
                         
-                        <!-- Pagination -->
+                        [Pagination - removed inner comment to avoid nesting]
                          <div class="card-footer">
                             <div class="flex items-center justify-between">
                                 <p class="text-sm text-slate-400" id="users-pagination-info">
                                     Showing 0 of 0 users
                                 </p>
                                 <div class="flex gap-2" id="users-pagination-buttons">
-                                    <!-- Pagination buttons will be inserted here -->
+                                    [Pagination buttons will be inserted here]
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Permissions Section -->
                 <div id="section-permissions" class="settings-section hidden">
@@ -299,7 +300,7 @@
         import { showToast } from '../scripts/components.js';
 
         let currentUser = null;
-        let currentTab = 'users';
+        let currentTab = 'permissions';
         let usersCurrentPage = 1;
         let usersTotalPages = 1;
         const usersPageSize = 10;
@@ -328,7 +329,7 @@
             setupTabsForRole();
 
             await loadAllData();
-            switchTab('users'); // Load users tab by default
+            switchTab('permissions'); // Users tab disabled (see User Maintenance page)
 
             // Enable keyboard search for all dropdowns
             Utils.enableAllSelectsKeyboardSearch('select');
@@ -338,7 +339,7 @@
         }
 
         async function loadAllData() {
-            await Promise.all([loadCategories(), loadLocations(), loadDepartments(), loadUsers(), loadAssignmentRules(), loadPermissions()]);
+            await Promise.all([loadCategories(), loadLocations(), loadDepartments(), /* loadUsers() — Users tab disabled, see User Maintenance page */ loadAssignmentRules(), loadPermissions()]);
         }
 
         async function loadCategories() {

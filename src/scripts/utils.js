@@ -539,9 +539,24 @@ const Utils = {
         const reportsLink = reportsNav?.querySelector('a[href="reports.html"]');
         const auditLogsLink = document.getElementById('audit-logs-link');
 
+        // Load junction table roles if not already loaded
+        if (!currentUser.userRoles) {
+            const junctionData = await this.loadUserJunctionData(supabase, currentUser.id);
+            currentUser.userRoles = junctionData.userRoles;
+            currentUser.userRegionIds = junctionData.userRegionIds;
+            currentUser.userRegions = junctionData.userRegions;
+        }
+        currentUser.isExecAdmin = this.isExecAdmin(currentUser);
+
+        // Exec+admin gets full admin navigation (all sections visible)
+        if (currentUser.isExecAdmin) {
+            // All nav sections stay visible — same as admin
+            return;
+        }
+
         switch (currentUser.role) {
             case 'executive':
-                // Executive: Dashboard, Reports, Audit Logs, Settings
+                // Pure Executive: Dashboard, Reports, Audit Logs, Settings
                 assetManagementNav?.classList.add('hidden');
                 trackingNav?.classList.add('hidden');
                 // reports-nav and admin-nav stay visible
@@ -592,6 +607,33 @@ const Utils = {
                 adminNav?.classList.add('hidden');
                 break;
         }
+    },
+
+    /**
+     * Load user roles and regions from junction tables
+     */
+    async loadUserJunctionData(supabase, userId) {
+        try {
+            const [rolesRes, regionsRes] = await Promise.all([
+                supabase.from('user_roles').select('role').eq('user_id', userId),
+                supabase.from('user_regions').select('region_id, region:regions(id, name, code)').eq('user_id', userId)
+            ]);
+            const userRoles = (rolesRes.data || []).map(r => r.role);
+            const userRegions = (regionsRes.data || []).map(r => r.region);
+            const userRegionIds = userRegions.map(r => r.id);
+            return { userRoles, userRegionIds, userRegions };
+        } catch (e) {
+            console.warn('Junction table load failed:', e);
+            return { userRoles: [], userRegionIds: [], userRegions: [] };
+        }
+    },
+
+    /**
+     * Check if user has both executive and admin roles
+     */
+    isExecAdmin(currentUser) {
+        const roles = currentUser.userRoles || [currentUser.role];
+        return roles.includes('executive') && roles.includes('admin');
     },
 
     /**

@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Maintenance - Madison 88 IT Asset Management</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <script type="module" src="../scripts/utils.js"></script>
+    <script src="../scripts/audit.js"></script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="text-center">
+            <div class="spinner mx-auto mb-4"></div>
+            <p class="text-slate-400">Loading User Maintenance...</p>
+        </div>
+    </div>
+
+    <div class="app-layout hidden" id="app">
+        <div id="sidebar-overlay" class="hidden" onclick="toggleSidebar()"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="dashboard.html" class="sidebar-logo">
+                    <img src="/images/logo.png" alt="Logo" onerror="this.style.display='none'">
+                    <h1>IT Equipment Inventory Management System</h1>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <p class="nav-section-title">Main</p>
+                    <a href="dashboard.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
+                </div>
+                <div class="nav-section" id="asset-management-nav">
+                    <p class="nav-section-title">Asset Management</p>
+                    <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>IT Equipments</a>
+                    <a href="employees.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Employees</a>
+                    <a href="assignments.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Assignments</a>
+                </div>
+                <div class="nav-section" id="tracking-nav">
+                    <p class="nav-section-title">Tracking</p>
+                    <a href="maintenance.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Maintenance</a>
+                    <a href="lost-assets.html" class="nav-link">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        Lost Assets
+                    </a>
+                    <a href="software-licenses.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Software Licenses</a>
+                </div>
+                <div class="nav-section" id="reports-nav">
+                    <p class="nav-section-title">Reports</p>
+                    <a href="reports.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Reports</a>
+                    <a href="audit-logs.html" class="nav-link" id="audit-logs-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Audit Logs</a>
+                </div>
+                <div class="nav-section" id="admin-nav">
+                    <p class="nav-section-title">Administration</p>
+                    <a href="settings.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Settings</a>
+                    <a href="user-maintenance.html" class="nav-link active" id="user-maintenance-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>User Maintenance</a>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="flex items-center gap-3">
+                    <div class="avatar avatar-md bg-blue-600"><span id="user-initials">--</span></div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white truncate" id="user-name">Loading...</p>
+                        <p class="text-xs text-slate-400 truncate" id="user-role">--</p>
+                    </div>
+                    <button onclick="handleLogout()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="lg:hidden text-slate-400 hover:text-white" onclick="toggleSidebar()"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+                    <h2 class="text-lg font-semibold text-white">User Maintenance</h2>
+                </div>
+            </header>
+
+            <div class="page-content">
+                <div class="page-header">
+                    <h1 class="page-title">User Maintenance</h1>
+                    <p class="page-subtitle">Manage user accounts, roles, and region assignments</p>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <div class="flex items-center gap-4">
+                        <!-- Role Filter -->
+                        <select id="um-role-filter" class="form-select" style="width: 180px;" onchange="handleRoleFilterChange()">
+                            <option value="">All Roles</option>
+                            <option value="executive">Executive</option>
+                            <option value="admin">Admin</option>
+                            <option value="it_staff">IT Staff</option>
+                            <option value="viewer">Viewer</option>
+                        </select>
+                        <!-- Region Filter -->
+                        <select id="um-region-filter" class="form-select" style="width: 200px;" onchange="handleRegionFilterChange()">
+                            <option value="">All Regions</option>
+                        </select>
+                        <!-- Search -->
+                        <div class="relative">
+                            <input type="text" id="um-search" class="form-input" style="width: 240px;" placeholder="Search by name or email..." oninput="handleSearchInput()">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="openInviteModal()">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                        Invite User
+                    </button>
+                </div>
+
+                <!-- Users Table -->
+                <div class="card">
+                    <div class="overflow-x-auto">
+                        <table class="data-table" id="um-users-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th class="text-center" style="text-align: center;">Executive</th>
+                                    <th class="text-center" style="text-align: center;">Admin</th>
+                                    <th class="text-center" style="text-align: center;">IT Staff</th>
+                                    <th class="text-center" style="text-align: center;">Viewer</th>
+                                    <th>Regions</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="um-users-tbody">
+                                <tr><td colspan="8" class="text-center py-8 text-slate-400">Loading users...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Pagination -->
+                    <div class="card-footer">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm text-slate-400" id="um-pagination-info">Showing 0 of 0 users</p>
+                            <div class="flex gap-2" id="um-pagination-buttons"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Invite User Modal -->
+    <div id="invite-modal" class="modal-overlay hidden">
+        <div class="modal max-w-md">
+            <div class="modal-header">
+                <h3 class="modal-title">Invite New User</h3>
+                <button onclick="closeInviteModal()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <form id="invite-form" onsubmit="handleInviteUser(event)">
+                <div class="modal-body space-y-4">
+                    <div class="form-group">
+                        <label class="form-label" for="invite-email">Email Address *</label>
+                        <input type="email" id="invite-email" class="form-input" required placeholder="user@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="invite-fullname">Full Name *</label>
+                        <input type="text" id="invite-fullname" class="form-input" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Roles *</label>
+                        <div class="flex flex-wrap gap-4 mt-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="invite-role" value="executive" class="form-checkbox">
+                                <span class="text-sm text-slate-300">Executive</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="invite-role" value="admin" class="form-checkbox">
+                                <span class="text-sm text-slate-300">Admin</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="invite-role" value="it_staff" class="form-checkbox">
+                                <span class="text-sm text-slate-300">IT Staff</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="invite-role" value="viewer" class="form-checkbox">
+                                <span class="text-sm text-slate-300">Viewer</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group" id="invite-region-group">
+                        <label class="form-label" for="invite-region">Assigned Region</label>
+                        <select id="invite-region" class="form-select">
+                            <option value="">-- Select Region --</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1" id="invite-region-hint">Select the region this user will manage</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeInviteModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="invite-submit-btn">Send Invite</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="edit-user-modal" class="modal-overlay hidden">
+        <div class="modal max-w-md">
+            <div class="modal-header">
+                <h3 class="modal-title" id="edit-user-title">Edit User</h3>
+                <button onclick="closeEditUserModal()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <form id="edit-user-form" onsubmit="handleSaveUser(event)">
+                <input type="hidden" id="edit-user-id">
+                <div class="modal-body space-y-4">
+                    <div class="form-group">
+                        <label class="form-label">User</label>
+                        <p class="text-white font-medium" id="edit-user-display-name">-</p>
+                        <p class="text-sm text-slate-400" id="edit-user-display-email">-</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Roles</label>
+                        <div class="flex flex-wrap gap-4 mt-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="edit-role" value="executive" class="form-checkbox" id="edit-role-executive">
+                                <span class="text-sm text-slate-300">Executive</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="edit-role" value="admin" class="form-checkbox" id="edit-role-admin">
+                                <span class="text-sm text-slate-300">Admin</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="edit-role" value="it_staff" class="form-checkbox" id="edit-role-it_staff">
+                                <span class="text-sm text-slate-300">IT Staff</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="edit-role" value="viewer" class="form-checkbox" id="edit-role-viewer">
+                                <span class="text-sm text-slate-300">Viewer</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group" id="edit-region-group">
+                        <label class="form-label" for="edit-region">Assigned Region</label>
+                        <select id="edit-region" class="form-select">
+                            <option value="">-- Select Region --</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1" id="edit-region-hint">Select the region this user will manage</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-user-active">Status</label>
+                        <select id="edit-user-active" class="form-select">
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="edit-submit-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { supabase } from '../scripts/config.js';
+        import { showToast } from '../scripts/components.js';
+
+        // ============================
+        // STATE
+        // ============================
+        let currentUser = null;
+        let allRegions = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        const pageSize = 10;
+        let filterRole = '';
+        let filterRegion = '';
+        let searchQuery = '';
+        let searchTimeout = null;
+
+        // ============================
+        // INIT
+        // ============================
+        async function init() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) { window.location.href = '/index.html'; return; }
+
+            const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', session.user.id).single();
+            currentUser = { ...session.user, ...profile };
+
+            // Only executive, exec+admin, and admin can access
+            const isExecAdmin = currentUser.isExecAdmin;
+            if (currentUser.role !== 'admin' && currentUser.role !== 'executive') {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            document.getElementById('user-name').textContent = currentUser.full_name || 'User';
+            document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
+            document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
+
+            await Utils.setupNavigation(currentUser, supabase);
+
+            // Load regions for filters and modals
+            await loadRegions();
+
+            // Load users
+            await loadUsers();
+
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
+
+        // ============================
+        // LOAD REGIONS
+        // ============================
+        async function loadRegions() {
+            const { data } = await supabase.from('regions').select('*').eq('is_active', true).order('name');
+            allRegions = data || [];
+
+            // Populate region filter dropdown
+            const regionFilter = document.getElementById('um-region-filter');
+            allRegions.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.name;
+                regionFilter.appendChild(opt);
+            });
+        }
+
+        // ============================
+        // LOAD USERS
+        // ============================
+        async function loadUsers() {
+            const from = (currentPage - 1) * pageSize;
+            const to = from + pageSize - 1;
+
+            let users = [];
+            let count = 0;
+
+            if (currentUser.role === 'admin' && !currentUser.isExecAdmin) {
+                // Admin visibility: executives + exec-admins + all admins (any region) + same-region IT staff + viewers
+                // We need to load in two parts and merge
+                
+                // Part 1: Executive, exec-admin, and all admins (any region)
+                let q1 = supabase
+                    .from('user_profiles')
+                    .select('*, region:regions(id, name, code)')
+                    .in('role', ['executive', 'admin'])
+                    .order('full_name');
+                if (searchQuery) q1 = q1.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+                if (filterRole && !['it_staff', 'viewer'].includes(filterRole)) q1 = q1.eq('role', filterRole);
+                if (filterRegion) q1 = q1.eq('region_id', filterRegion);
+                const { data: upperUsers } = filterRole && ['it_staff', 'viewer'].includes(filterRole) ? { data: [] } : await q1;
+
+                // Part 2: Same-region IT Staff and Viewers
+                let q2 = supabase
+                    .from('user_profiles')
+                    .select('*, region:regions(id, name, code)')
+                    .in('role', ['it_staff', 'viewer'])
+                    .eq('region_id', currentUser.region_id)
+                    .order('full_name');
+                if (searchQuery) q2 = q2.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+                if (filterRole && ['it_staff', 'viewer'].includes(filterRole)) q2 = q2.eq('role', filterRole);
+                if (filterRole && !['it_staff', 'viewer'].includes(filterRole)) {
+                    // If filtering by exec/admin role, skip this query
+                    var lowerUsers = [];
+                } else {
+                    const { data: lData } = await q2;
+                    var lowerUsers = lData || [];
+                }
+
+                // Merge, deduplicate, and sort
+                const allMerged = [...(upperUsers || []), ...lowerUsers];
+                const seen = new Set();
+                const deduped = allMerged.filter(u => {
+                    if (seen.has(u.id)) return false;
+                    seen.add(u.id);
+                    return true;
+                });
+                deduped.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
+                count = deduped.length;
+                users = deduped.slice(from, to + 1);
+            } else {
+                // Executive / Exec+Admin: see ALL users
+                let query = supabase
+                    .from('user_profiles')
+                    .select('*, region:regions(id, name, code)', { count: 'exact' })
+                    .order('full_name');
+
+                if (searchQuery) query = query.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+                if (filterRole) query = query.eq('role', filterRole);
+                if (filterRegion) query = query.eq('region_id', filterRegion);
+
+                const result = await query.range(from, to);
+                users = result.data;
+                count = result.count;
+            }
+
+            // Now load junction table data for all displayed users
+            const userIds = (users || []).map(u => u.id);
+            let userRolesMap = {};
+            let userRegionsMap = {};
+
+            if (userIds.length > 0) {
+                // Load user_roles
+                const { data: rolesData } = await supabase
+                    .from('user_roles')
+                    .select('user_id, role')
+                    .in('user_id', userIds);
+
+                (rolesData || []).forEach(r => {
+                    if (!userRolesMap[r.user_id]) userRolesMap[r.user_id] = [];
+                    userRolesMap[r.user_id].push(r.role);
+                });
+
+                // Load user_regions
+                const { data: regionsData } = await supabase
+                    .from('user_regions')
+                    .select('user_id, region_id, region:regions(id, name, code)')
+                    .in('user_id', userIds);
+
+                (regionsData || []).forEach(r => {
+                    if (!userRegionsMap[r.user_id]) userRegionsMap[r.user_id] = [];
+                    userRegionsMap[r.user_id].push(r.region);
+                });
+            }
+
+            // Update pagination info
+            totalPages = Math.ceil((count || 0) / pageSize);
+            const startRecord = count > 0 ? from + 1 : 0;
+            const endRecord = Math.min(from + pageSize, count || 0);
+            document.getElementById('um-pagination-info').textContent =
+                `Showing ${startRecord}-${endRecord} of ${count || 0} users`;
+
+            // Render table
+            const tbody = document.getElementById('um-users-tbody');
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-400">No users found</td></tr>';
+                updatePagination();
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                // Use junction table roles, fallback to legacy role column
+                const roles = userRolesMap[u.id] || (u.role ? [u.role] : []);
+                const regions = userRegionsMap[u.id] || (u.region ? [u.region] : []);
+
+                // Executive, exec+admin, and admin can all edit visible users
+                const canEdit = true;
+
+                const regionBadges = regions.length > 0
+                    ? regions.map(r => `<span class="badge badge-info text-xs">${r.code || r.name}</span>`).join(' ')
+                    : '<span class="text-slate-500 text-sm">None</span>';
+
+                const checkIcon = `<svg class="w-5 h-5 text-green-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
+                const emptyIcon = `<span class="block w-5 h-5 mx-auto"></span>`;
+
+                return `
+                    <tr>
+                        <td>
+                            <div class="font-medium text-white">${u.full_name || '-'}</div>
+                            <div class="text-xs text-slate-400">${u.email || '-'}</div>
+                        </td>
+                        <td class="text-center">${roles.includes('executive') ? checkIcon : emptyIcon}</td>
+                        <td class="text-center">${roles.includes('admin') ? checkIcon : emptyIcon}</td>
+                        <td class="text-center">${roles.includes('it_staff') ? checkIcon : emptyIcon}</td>
+                        <td class="text-center">${roles.includes('viewer') ? checkIcon : emptyIcon}</td>
+                        <td>${regionBadges}</td>
+                        <td><span class="badge ${u.is_active !== false ? 'badge-success' : 'badge-danger'}">${u.is_active !== false ? 'Active' : 'Inactive'}</span></td>
+                        <td class="text-right">
+                            ${canEdit ? `<button class="btn btn-sm btn-secondary" onclick="openEditUserModal('${u.id}')">Edit</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            updatePagination();
+        }
+
+        // ============================
+        // PAGINATION
+        // ============================
+        function updatePagination() {
+            const container = document.getElementById('um-pagination-buttons');
+            let html = '';
+
+            html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    html += `<button class="btn btn-sm btn-primary">${i}</button>`;
+                } else if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1) {
+                    html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${i})">${i}</button>`;
+                } else if (Math.abs(i - currentPage) === 2) {
+                    html += `<span class="text-slate-400 px-2">...</span>`;
+                }
+            }
+
+            html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>`;
+
+            container.innerHTML = html;
+        }
+
+        // ============================
+        // FILTERS & SEARCH
+        // ============================
+        window.changePage = function(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            loadUsers();
+        };
+
+        window.handleRoleFilterChange = function() {
+            filterRole = document.getElementById('um-role-filter').value;
+            currentPage = 1;
+            loadUsers();
+        };
+
+        window.handleRegionFilterChange = function() {
+            filterRegion = document.getElementById('um-region-filter').value;
+            currentPage = 1;
+            loadUsers();
+        };
+
+        window.handleSearchInput = function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchQuery = document.getElementById('um-search').value.trim();
+                currentPage = 1;
+                loadUsers();
+            }, 300);
+        };
+
+        // ============================
+        // INVITE USER MODAL
+        // ============================
+        window.openInviteModal = function() {
+            document.getElementById('invite-form').reset();
+
+            // Populate region dropdown
+            const regionSelect = document.getElementById('invite-region');
+            regionSelect.innerHTML = '<option value="">-- Select Region --</option>';
+            allRegions.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.name;
+                regionSelect.appendChild(opt);
+            });
+
+            // Setup role combo logic for invite modal
+            setupRoleComboLogic('invite');
+
+            document.getElementById('invite-modal').classList.remove('hidden');
+        };
+
+        window.closeInviteModal = function() {
+            document.getElementById('invite-modal').classList.add('hidden');
+        };
+
+        window.handleInviteUser = async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('invite-email').value.trim();
+            const fullName = document.getElementById('invite-fullname').value.trim();
+
+            // Get selected roles
+            const selectedRoles = Array.from(document.querySelectorAll('input[name="invite-role"]:checked')).map(cb => cb.value);
+            if (selectedRoles.length === 0) {
+                showToast('Please select at least one role', 'error');
+                return;
+            }
+
+            // Get selected region
+            const selectedRegionId = document.getElementById('invite-region').value || null;
+            const selectedRegions = selectedRegionId ? [selectedRegionId] : [];
+
+            const submitBtn = document.getElementById('invite-submit-btn');
+            const originalText = submitBtn.textContent;
+
+            // Validate: non-executive roles require a region
+            if (!selectedRoles.includes('executive') || selectedRoles.includes('admin')) {
+                if (!selectedRegionId) {
+                    showToast('Please select a region for this user', 'error');
+                    return;
+                }
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+
+            try {
+                // Use the primary (highest-level) role for the legacy column
+                const primaryRole = getPrimaryRole(selectedRoles);
+
+                // Invite the user via Supabase Auth
+                const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+                    data: {
+                        full_name: fullName
+                    }
+                });
+
+                if (inviteError) throw inviteError;
+
+                const newUserId = inviteData.user.id;
+
+                // Create user profile
+                const { error: profileError } = await supabase
+                    .from('user_profiles')
+                    .insert({
+                        id: newUserId,
+                        email: email,
+                        full_name: fullName,
+                        role: primaryRole,
+                        region_id: selectedRegions.length > 0 ? selectedRegions[0] : null,
+                        is_active: true
+                    });
+
+                if (profileError) throw profileError;
+
+                // Insert into user_roles junction table
+                if (selectedRoles.length > 0) {
+                    const roleInserts = selectedRoles.map(role => ({
+                        user_id: newUserId,
+                        role: role,
+                        assigned_by: currentUser.id
+                    }));
+                    const { error: rolesError } = await supabase.from('user_roles').insert(roleInserts);
+                    if (rolesError) throw rolesError;
+                }
+
+                // Insert into user_regions junction table
+                if (selectedRegions.length > 0) {
+                    const regionInserts = selectedRegions.map(regionId => ({
+                        user_id: newUserId,
+                        region_id: regionId,
+                        assigned_by: currentUser.id
+                    }));
+                    const { error: regionsError } = await supabase.from('user_regions').insert(regionInserts);
+                    if (regionsError) throw regionsError;
+                }
+
+                // Audit log
+                await Audit.log({
+                    action: 'CREATE',
+                    actionCategory: Audit.CATEGORIES?.USER_MANAGEMENT || 'USER_MANAGEMENT',
+                    description: `Invited new user: ${fullName} (${email}) with roles: ${selectedRoles.join(', ')}`,
+                    tableName: 'user_profiles',
+                    recordId: newUserId,
+                    newValues: { email, full_name: fullName, roles: selectedRoles, regions: selectedRegions }
+                });
+
+                showToast(`Invitation sent to ${email}`, 'success');
+                closeInviteModal();
+                await loadUsers();
+
+            } catch (error) {
+                console.error('Invite user error:', error);
+                showToast(error.message || 'Failed to invite user', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        };
+
+        // ============================
+        // EDIT USER MODAL
+        // ============================
+        window.openEditUserModal = async function(userId) {
+            const { data: user } = await supabase.from('user_profiles').select('*').eq('id', userId).single();
+            if (!user) return;
+
+            // Load current roles from junction table
+            const { data: userRoles } = await supabase.from('user_roles').select('role').eq('user_id', userId);
+            const currentRoles = (userRoles || []).map(r => r.role);
+            // Fallback to legacy role if junction table is empty
+            const effectiveRoles = currentRoles.length > 0 ? currentRoles : (user.role ? [user.role] : []);
+
+            // Load current regions from junction table
+            const { data: userRegions } = await supabase.from('user_regions').select('region_id').eq('user_id', userId);
+            const currentRegionIds = (userRegions || []).map(r => r.region_id);
+            // Fallback to legacy region_id if junction table is empty
+            const effectiveRegionIds = currentRegionIds.length > 0 ? currentRegionIds : (user.region_id ? [user.region_id] : []);
+
+            // Set user info
+            document.getElementById('edit-user-id').value = userId;
+            document.getElementById('edit-user-display-name').textContent = user.full_name || '-';
+            document.getElementById('edit-user-display-email').textContent = user.email || '-';
+
+            // Set role checkboxes - reset disabled state first, then set checked
+            ['executive', 'admin', 'it_staff', 'viewer'].forEach(role => {
+                const cb = document.getElementById(`edit-role-${role}`);
+                if (cb) {
+                    cb.disabled = false;
+                    cb.checked = effectiveRoles.includes(role);
+                }
+            });
+
+            // Populate region dropdown
+            const regionSelect = document.getElementById('edit-region');
+            regionSelect.innerHTML = '<option value="">-- Select Region --</option>';
+            allRegions.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.name;
+                if (effectiveRegionIds.includes(r.id)) opt.selected = true;
+                regionSelect.appendChild(opt);
+            });
+
+            // Setup role combo logic for edit modal
+            setupRoleComboLogic('edit');
+
+            // Set status
+            document.getElementById('edit-user-active').value = user.is_active !== false ? 'true' : 'false';
+
+            document.getElementById('edit-user-title').textContent = `Edit User - ${user.full_name || user.email}`;
+            document.getElementById('edit-user-modal').classList.remove('hidden');
+        };
+
+        window.closeEditUserModal = function() {
+            document.getElementById('edit-user-modal').classList.add('hidden');
+        };
+
+        window.handleSaveUser = async function(e) {
+            e.preventDefault();
+
+            const userId = document.getElementById('edit-user-id').value;
+
+            // Get selected roles
+            const selectedRoles = Array.from(document.querySelectorAll('input[name="edit-role"]:checked')).map(cb => cb.value);
+            if (selectedRoles.length === 0) {
+                showToast('Please select at least one role', 'error');
+                return;
+            }
+
+            // Get selected region
+            const selectedRegionId = document.getElementById('edit-region').value || null;
+            const selectedRegions = selectedRegionId ? [selectedRegionId] : [];
+
+            const isActive = document.getElementById('edit-user-active').value === 'true';
+
+            const submitBtn = document.getElementById('edit-submit-btn');
+            const originalText = submitBtn.textContent;
+
+            // Validate: non-executive roles require a region
+            if (!selectedRoles.includes('executive') || selectedRoles.includes('admin')) {
+                if (!selectedRegionId) {
+                    showToast('Please select a region for this user', 'error');
+                    return;
+                }
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            try {
+                // Get old data for audit
+                const { data: oldUser } = await supabase.from('user_profiles').select('*').eq('id', userId).single();
+                const { data: oldRoles } = await supabase.from('user_roles').select('role').eq('user_id', userId);
+                const { data: oldRegions } = await supabase.from('user_regions').select('region_id').eq('user_id', userId);
+
+                const primaryRole = getPrimaryRole(selectedRoles);
+
+                // 1. Update legacy user_profiles columns for backward compatibility
+                const { error: profileError } = await supabase
+                    .from('user_profiles')
+                    .update({
+                        role: primaryRole,
+                        region_id: selectedRegions.length > 0 ? selectedRegions[0] : null,
+                        is_active: isActive
+                    })
+                    .eq('id', userId);
+
+                if (profileError) throw profileError;
+
+                // 2. Sync user_roles junction table
+                // Delete existing roles
+                await supabase.from('user_roles').delete().eq('user_id', userId);
+                // Insert new roles
+                if (selectedRoles.length > 0) {
+                    const roleInserts = selectedRoles.map(role => ({
+                        user_id: userId,
+                        role: role,
+                        assigned_by: currentUser.id
+                    }));
+                    const { error: rolesError } = await supabase.from('user_roles').insert(roleInserts);
+                    if (rolesError) throw rolesError;
+                }
+
+                // 3. Sync user_regions junction table
+                // Delete existing regions
+                await supabase.from('user_regions').delete().eq('user_id', userId);
+                // Insert new regions
+                if (selectedRegions.length > 0) {
+                    const regionInserts = selectedRegions.map(regionId => ({
+                        user_id: userId,
+                        region_id: regionId,
+                        assigned_by: currentUser.id
+                    }));
+                    const { error: regionsError } = await supabase.from('user_regions').insert(regionInserts);
+                    if (regionsError) throw regionsError;
+                }
+
+                // Audit log
+                const oldRoleList = (oldRoles || []).map(r => r.role);
+                const oldRegionList = (oldRegions || []).map(r => r.region_id);
+
+                await Audit.log({
+                    action: 'UPDATE',
+                    actionCategory: Audit.CATEGORIES?.USER_MANAGEMENT || 'USER_MANAGEMENT',
+                    description: `Updated user: ${oldUser.full_name || oldUser.email} — roles: ${selectedRoles.join(', ')}`,
+                    tableName: 'user_profiles',
+                    recordId: userId,
+                    oldValues: { roles: oldRoleList, regions: oldRegionList, is_active: oldUser.is_active },
+                    newValues: { roles: selectedRoles, regions: selectedRegions, is_active: isActive }
+                });
+
+                showToast('User updated successfully', 'success');
+                closeEditUserModal();
+                await loadUsers();
+
+            } catch (error) {
+                console.error('Save user error:', error);
+                showToast(error.message || 'Failed to save user', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        };
+
+        // ============================
+        // HELPERS
+        // ============================
+
+        /**
+         * Determine the primary (highest-level) role from a list
+         * Used for the legacy `role` column on `user_profiles`
+         * Hierarchy: executive > admin > it_staff > viewer
+         */
+        function getPrimaryRole(roles) {
+            const hierarchy = ['executive', 'admin', 'it_staff', 'viewer'];
+            for (const role of hierarchy) {
+                if (roles.includes(role)) return role;
+            }
+            return 'viewer';
+        }
+
+        /**
+         * Setup role combination logic for invite/edit modals.
+         * Valid combos: Executive only, Exec+Admin, Admin only, IT Staff only, Viewer only
+         * When Executive only → disable region dropdown
+         * When Exec+Admin → enable region dropdown (1 region for admin ops)
+         */
+        function setupRoleComboLogic(prefix) {
+            const execCb = document.querySelector(`input[name="${prefix}-role"][value="executive"]`);
+            const adminCb = document.querySelector(`input[name="${prefix}-role"][value="admin"]`);
+            const itCb = document.querySelector(`input[name="${prefix}-role"][value="it_staff"]`);
+            const viewerCb = document.querySelector(`input[name="${prefix}-role"][value="viewer"]`);
+            const regionGroup = document.getElementById(`${prefix}-region-group`);
+            const regionHint = document.getElementById(`${prefix}-region-hint`);
+
+            function updateRoleState() {
+                const execChecked = execCb.checked;
+                const adminChecked = adminCb.checked;
+
+                if (execChecked && !adminChecked) {
+                    // Executive only: disable IT Staff/Viewer, disable region
+                    itCb.checked = false; itCb.disabled = true;
+                    viewerCb.checked = false; viewerCb.disabled = true;
+                    adminCb.disabled = false;
+                    regionGroup.style.opacity = '0.4';
+                    regionGroup.querySelector('select').disabled = true;
+                    regionHint.textContent = 'Executive has access to all regions — no region assignment needed';
+                } else if (execChecked && adminChecked) {
+                    // Exec+Admin: disable IT Staff/Viewer, enable region
+                    itCb.checked = false; itCb.disabled = true;
+                    viewerCb.checked = false; viewerCb.disabled = true;
+                    regionGroup.style.opacity = '1';
+                    regionGroup.querySelector('select').disabled = false;
+                    regionHint.textContent = 'Select 1 region for admin operations (assets, employees, etc.)';
+                } else if (adminChecked) {
+                    // Admin only: disable IT Staff/Viewer/Executive, enable region
+                    execCb.disabled = false;
+                    itCb.checked = false; itCb.disabled = true;
+                    viewerCb.checked = false; viewerCb.disabled = true;
+                    regionGroup.style.opacity = '1';
+                    regionGroup.querySelector('select').disabled = false;
+                    regionHint.textContent = 'Select the region this admin will manage';
+                } else if (itCb.checked) {
+                    // IT Staff only: disable Exec/Admin/Viewer
+                    execCb.checked = false; execCb.disabled = true;
+                    adminCb.checked = false; adminCb.disabled = true;
+                    viewerCb.checked = false; viewerCb.disabled = true;
+                    regionGroup.style.opacity = '1';
+                    regionGroup.querySelector('select').disabled = false;
+                    regionHint.textContent = 'Select the region this IT staff will manage';
+                } else if (viewerCb.checked) {
+                    // Viewer only: disable Exec/Admin/IT Staff
+                    execCb.checked = false; execCb.disabled = true;
+                    adminCb.checked = false; adminCb.disabled = true;
+                    itCb.checked = false; itCb.disabled = true;
+                    regionGroup.style.opacity = '1';
+                    regionGroup.querySelector('select').disabled = false;
+                    regionHint.textContent = 'Select the region this viewer can access';
+                } else {
+                    // Nothing selected: enable all
+                    execCb.disabled = false;
+                    adminCb.disabled = false;
+                    itCb.disabled = false;
+                    viewerCb.disabled = false;
+                    regionGroup.style.opacity = '1';
+                    regionGroup.querySelector('select').disabled = false;
+                    regionHint.textContent = 'Select the region this user will manage';
+                }
+            }
+
+            [execCb, adminCb, itCb, viewerCb].forEach(cb => {
+                cb.addEventListener('change', updateRoleState);
+            });
+
+            // Run once to set initial state
+            updateRoleState();
+        }
+
+        // ============================
+        // GLOBAL HANDLERS
+        // ============================
+        window.toggleSidebar = () => {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('hidden');
+        };
+
+        window.handleLogout = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) await Audit.logLogout(session.user.email);
+            } catch (e) { console.error(e); }
+            await supabase.auth.signOut();
+            window.location.href = '/index.html';
+        };
+
+        init();
+    </script>
+</body>
+</html>

@@ -74,7 +74,7 @@
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                         </svg>
-                        Assets
+                        IT Equipments
                     </a>
                     <a href="employees.html" class="nav-link">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,6 +139,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
                         </svg>
                         Settings
+                    </a>
+                    <a href="user-maintenance.html" class="nav-link" id="user-maintenance-link">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        User Maintenance
                     </a>
                 </div>
             </nav>
@@ -219,10 +225,10 @@
                 <!-- Stats Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                     <!-- Available Assets -->
-                    <div class="stat-card bg-linear-to-br from-blue-600 to-blue-700">
+                    <div class="stat-card bg-linear-to-br from-green-600 to-green-700">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-blue-200 text-sm font-medium">Available Assets</p>
+                                <p class="text-green-200 text-sm font-medium">Available Assets</p>
                                 <p class="text-3xl font-bold text-white mt-1" id="stat-available-assets">--</p>
                             </div>
                             <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
@@ -231,16 +237,16 @@
                                 </svg>
                             </div>
                         </div>
-                        <p class="text-blue-200 text-xs mt-2">
+                        <p class="text-green-200 text-xs mt-2">
                             Can be assigned to employees
                         </p>
                     </div>
 
                     <!-- Assigned Assets -->
-                    <div class="stat-card bg-linear-to-br from-green-600 to-green-700">
+                    <div class="stat-card bg-linear-to-br from-blue-600 to-blue-700">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-green-200 text-sm font-medium">Assigned</p>
+                                <p class="text-blue-200 text-sm font-medium">Assigned</p>
                                 <p class="text-3xl font-bold text-white mt-1" id="stat-assigned-assets">--</p>
                             </div>
                             <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
@@ -249,7 +255,7 @@
                                 </svg>
                             </div>
                         </div>
-                        <p class="text-green-200 text-xs mt-2">Currently in use</p>
+                        <p class="text-blue-200 text-xs mt-2">Currently in use</p>
                     </div>
 
                     <!-- Under Repair -->
@@ -416,7 +422,25 @@
         
         // Global state
         let currentUser = null;
-        let selectedRegionId = null; // null = all regions (for executive)
+        let selectedRegionId = null; // null = all regions (for executive) or all assigned regions (for exec+admin)
+        
+        /**
+         * Apply region filter to a Supabase query based on current selection
+         */
+        function applyRegionFilter(query, columnName = 'region_id') {
+            if (selectedRegionId) {
+                return query.eq(columnName, selectedRegionId);
+            }
+            return query;
+        }
+        
+        /**
+         * Check if a region_id matches the current region filter (for client-side filtering)
+         */
+        function matchesRegionFilter(regionId) {
+            if (selectedRegionId) return regionId === selectedRegionId;
+            return true;
+        }
         
         // Chart instances (need to be destroyed before recreating)
         let statusChartInstance = null;
@@ -545,8 +569,8 @@
             const regionLabel = document.getElementById('region-label');
             const dashboardTitle = document.getElementById('dashboard-title');
 
-            if (currentUser.role === 'executive') {
-                // Executive: show region dropdown with all regions
+            if (currentUser.isExecAdmin || currentUser.role === 'executive') {
+                // Executive & Exec+Admin: show region dropdown with ALL regions
                 const { data: regions } = await supabase.from('regions').select('*').eq('is_active', true).order('name');
                 
                 if (regionSelector && regions) {
@@ -628,7 +652,7 @@
             let statsQuery = supabase
                 .from('assets')
                 .select('status');
-            if (selectedRegionId) statsQuery = statsQuery.eq('region_id', selectedRegionId);
+            statsQuery = applyRegionFilter(statsQuery);
             const { data: assets, error } = await statsQuery;
 
             if (error) {
@@ -663,7 +687,7 @@
                 let statusQuery = supabase
                     .from('assets')
                     .select('status, category:asset_categories(name)');
-                if (selectedRegionId) statusQuery = statusQuery.eq('region_id', selectedRegionId);
+                statusQuery = applyRegionFilter(statusQuery);
                 const { data: statusData, error: statusError } = await statusQuery;
 
                 if (statusError) {
@@ -673,8 +697,8 @@
                 // Define status order and colors matching the cards
                 const statusOrder = ['available', 'assigned', 'under_repair', 'lost', 'damaged', 'decommissioned'];
                 const statusColorMap = {
-                    'available': '#3b82f6',     // blue (matches Available Assets card)
-                    'assigned': '#22c55e',      // green (matches Assigned card) 
+                    'available': '#22c55e',     // green (matches Available Assets card)
+                    'assigned': '#3b82f6',      // blue (matches Assigned card) 
                     'under_repair': '#eab308',  // yellow (matches Under Repair card)
                     'lost': '#ef4444',          // red (matches Issues card)
                     'damaged': '#ef4444',       // red (matches Issues card)
@@ -839,7 +863,7 @@
             let catQuery = supabase
                 .from('assets')
                 .select('category:asset_categories(name)');
-            if (selectedRegionId) catQuery = catQuery.eq('region_id', selectedRegionId);
+            catQuery = applyRegionFilter(catQuery);
             const { data: categoryData } = await catQuery;
 
             const categoryCounts = {};
@@ -903,7 +927,7 @@
                     .from('assets')
                     .select('created_at, purchase_date')
                     .gte('created_at', twelveMonthsAgo.toISOString());
-                if (selectedRegionId) trendQuery = trendQuery.eq('region_id', selectedRegionId);
+                trendQuery = applyRegionFilter(trendQuery);
                 const { data: assets, error } = await trendQuery;
 
                 if (error) {
@@ -1064,7 +1088,7 @@
                 let heatmapQuery = supabase
                     .from('assets')
                     .select('status, category:asset_categories(name)');
-                if (selectedRegionId) heatmapQuery = heatmapQuery.eq('region_id', selectedRegionId);
+                heatmapQuery = applyRegionFilter(heatmapQuery);
                 const { data: assets, error } = await heatmapQuery;
 
                 if (error) {
@@ -1295,7 +1319,7 @@
                     let wQuery = supabase
                         .from('v_warranty_expiring')
                         .select('*');
-                    if (selectedRegionId) wQuery = wQuery.eq('region_id', selectedRegionId);
+                    wQuery = applyRegionFilter(wQuery);
                     const { data: warrantyExpiring } = await wQuery.limit(3);
 
                     if (warrantyExpiring?.length) {
@@ -1318,7 +1342,7 @@
                     let rQuery = supabase
                         .from('v_assets_refresh_due')
                         .select('*');
-                    if (selectedRegionId) rQuery = rQuery.eq('region_id', selectedRegionId);
+                    rQuery = applyRegionFilter(rQuery);
                     const { data: refreshDue } = await rQuery.limit(3);
 
                     if (refreshDue?.length) {
@@ -1342,9 +1366,7 @@
                     .eq('status', 'in_progress');
                 const { data: pendingMaintenance } = await mQuery.limit(3);
                 // Filter by region client-side for maintenance (joined through asset)
-                const filteredMaintenance = selectedRegionId
-                    ? (pendingMaintenance || []).filter(m => m.asset?.region_id === selectedRegionId)
-                    : pendingMaintenance;
+                const filteredMaintenance = (pendingMaintenance || []).filter(m => matchesRegionFilter(m.asset?.region_id));
 
                 if (filteredMaintenance?.length) {
                     alerts.push({
@@ -1443,7 +1465,7 @@
                 if (type === 'warranty') {
                     title.textContent = 'Warranty Expiring Soon';
                     let q = supabase.from('v_warranty_expiring').select('*').order('warranty_expiry', { ascending: true });
-                    if (selectedRegionId) q = q.eq('region_id', selectedRegionId);
+                    q = applyRegionFilter(q);
                     const { data, error } = await q;
                     if (error) throw error;
 
@@ -1487,7 +1509,7 @@
                 } else if (type === 'refresh') {
                     title.textContent = 'Assets Due for Refresh';
                     let q = supabase.from('v_assets_refresh_due').select('*').order('purchase_date', { ascending: true });
-                    if (selectedRegionId) q = q.eq('region_id', selectedRegionId);
+                    q = applyRegionFilter(q);
                     const { data, error } = await q;
                     if (error) throw error;
 
