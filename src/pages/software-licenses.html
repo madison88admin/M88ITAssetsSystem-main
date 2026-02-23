@@ -15,6 +15,8 @@
     <script type="module" src="../scripts/utils.js"></script>
     <script src="../scripts/audit.js"></script>
     <script src="../scripts/auth.js"></script>
+    <script type="module" src="../scripts/assets.js"></script>
+    <script src="../scripts/licenses.js"></script>
 </head>
 <body>
     <div id="loading-screen">
@@ -42,20 +44,20 @@
                 </div>
                 <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
-                    <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>IT Equipments</a>
+                    <a href="assets.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>IT Equipments Inventory</a>
+                    <a href="software-licenses.html" class="nav-link active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Software Licenses</a>
                     <a href="employees.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Employees</a>
                     <a href="assignments.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Assignments</a>
                 </div>
                 <div class="nav-section" id="tracking-nav">
                     <p class="nav-section-title">Tracking</p>
-                    <a href="maintenance.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Maintenance</a>
+                    <a href="maintenance.html" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Asset Maintenance</a>
                     <a href="lost-assets.html" class="nav-link">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                         </svg>
                         Lost Assets
                     </a>
-                    <a href="software-licenses.html" class="nav-link active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Software Licenses</a>
                 </div>
                 <div class="nav-section" id="reports-nav">
                     <p class="nav-section-title">Reports</p>
@@ -103,19 +105,30 @@
                 </div>
 
                 <!-- Stats -->
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-6">
                     <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-blue-400" id="stat-total">--</p><p class="text-slate-400 text-sm">Total Licenses</p></div></div>
                     <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-green-400" id="stat-active">--</p><p class="text-slate-400 text-sm">Active</p></div></div>
                     <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-yellow-400" id="stat-expiring">--</p><p class="text-slate-400 text-sm">Expiring Soon</p></div></div>
                     <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-red-400" id="stat-expired">--</p><p class="text-slate-400 text-sm">Expired</p></div></div>
+                    <div class="card"><div class="card-body text-center"><p class="text-3xl font-bold text-purple-400" id="stat-seats">--</p><p class="text-slate-400 text-sm">Seats In Use</p></div></div>
                 </div>
 
                 <!-- Licenses Table -->
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">All Licenses <span class="text-slate-400 font-normal ml-2" id="licenses-count">(0)</span></h3>
-                        <div class="flex gap-2">
-                            <input type="text" class="form-input text-sm" placeholder="Search..." oninput="handleSearch(this.value)">
+                        <div class="flex gap-2 flex-wrap">
+                            <select class="form-select text-sm" style="width:auto;min-width:140px" onchange="handleCategoryFilter(this.value)" id="filter-category">
+                                <option value="">All Categories</option>
+                            </select>
+                            <select class="form-select text-sm" style="width:auto;min-width:120px" onchange="handleStatusFilter(this.value)" id="filter-status">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="expiring">Expiring Soon</option>
+                                <option value="expired">Expired</option>
+                                <option value="perpetual">Perpetual</option>
+                            </select>
+                            <input type="text" class="form-input text-sm" style="width:auto;min-width:160px" placeholder="Search..." oninput="handleSearch(this.value)">
                         </div>
                     </div>
                     <div class="overflow-x-auto">
@@ -126,7 +139,7 @@
                                     <th>Category</th>
                                     <th>License Key</th>
                                     <th>Type</th>
-                                    <th>Seats</th>
+                                    <th>Seats (Used/Total)</th>
                                     <th>Expiry Date</th>
                                     <th>Status</th>
                                     <th style="text-align: right;">Actions</th>
@@ -230,15 +243,102 @@
 
     <div id="toast-container"></div>
 
+    <!-- License Detail / Assignments Modal -->
+    <div id="detail-modal" class="modal-overlay hidden">
+        <div class="modal max-w-2xl">
+            <div class="modal-header">
+                <h3 class="modal-title" id="detail-modal-title">License Details</h3>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <!-- License Summary -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div class="bg-slate-700/50 rounded-lg p-3">
+                        <p class="text-xs text-slate-400">Vendor</p>
+                        <p class="text-sm font-medium text-white" id="detail-vendor">--</p>
+                    </div>
+                    <div class="bg-slate-700/50 rounded-lg p-3">
+                        <p class="text-xs text-slate-400">Type</p>
+                        <p class="text-sm font-medium text-white capitalize" id="detail-type">--</p>
+                    </div>
+                    <div class="bg-slate-700/50 rounded-lg p-3">
+                        <p class="text-xs text-slate-400">Seats</p>
+                        <p class="text-sm font-medium" id="detail-seats">--</p>
+                    </div>
+                    <div class="bg-slate-700/50 rounded-lg p-3">
+                        <p class="text-xs text-slate-400">Status</p>
+                        <p class="text-sm" id="detail-status">--</p>
+                    </div>
+                </div>
+                <div class="bg-slate-700/50 rounded-lg p-3 mb-4" id="detail-notes-section" style="display:none">
+                    <p class="text-xs text-slate-400 mb-1">Notes</p>
+                    <p class="text-sm text-slate-300" id="detail-notes"></p>
+                </div>
+
+                <!-- Assigned Employees -->
+                <div class="border-t border-slate-700 pt-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-semibold text-white">Assigned Employees</h4>
+                        <button class="btn btn-sm btn-primary" id="assign-employee-btn" onclick="toggleAssignForm()">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            Assign
+                        </button>
+                    </div>
+
+                    <!-- Assign Form (hidden by default) -->
+                    <div id="assign-form" class="bg-slate-700/50 rounded-lg p-3 mb-3 hidden">
+                        <div class="flex gap-2">
+                            <select id="assign-employee-select" class="form-select text-sm flex-1">
+                                <option value="">Select an employee...</option>
+                            </select>
+                            <button class="btn btn-sm btn-primary" onclick="assignLicenseToEmployee()">Assign</button>
+                            <button class="btn btn-sm btn-secondary" onclick="toggleAssignForm()">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div id="assigned-employees-list">
+                        <p class="text-sm text-slate-400 text-center py-4">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal-overlay hidden">
+        <div class="modal max-w-sm">
+            <div class="modal-header">
+                <h3 class="modal-title text-red-400">Confirm Delete</h3>
+                <button onclick="closeDeleteModal()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-slate-300 text-sm">Are you sure you want to delete <strong id="delete-license-name" class="text-white"></strong>?</p>
+                <p class="text-xs text-slate-400 mt-2">This action cannot be undone. Licenses with active assignments cannot be deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-sm" style="background-color: #ef4444; color: white;" onclick="confirmDelete()" id="confirm-delete-btn">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { supabase } from '../scripts/config.js';
         import { showToast } from '../scripts/components.js';
 
         let currentUser = null;
         let searchTerm = '';
+        let filterCategory = '';
+        let filterStatus = '';
         let currentPage = 1;
         let totalPages = 1;
         const pageSize = 10;
+        let seatUsageMap = {}; // licenseId -> usedSeats
+        let detailLicenseId = null;
+        let deleteLicenseData = null;
 
         async function init() {
             const { data: { session } } = await supabase.auth.getSession();
@@ -246,21 +346,20 @@
 
             const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', session.user.id).single();
             currentUser = { ...session.user, ...profile };
+            Auth.user = session.user;
+            Auth.profile = profile;
             
             document.getElementById('user-name').textContent = currentUser.full_name || 'User';
             document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
             document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
             
-            // Setup navigation visibility based on role and permissions
             await Utils.setupNavigation(currentUser, supabase);
             
-            // Redirect viewers and pure executives to dashboard (exec+admin can access)
             if (currentUser.role === 'viewer' || (currentUser.role === 'executive' && !currentUser.isExecAdmin)) {
                 window.location.href = 'dashboard.html';
                 return;
             }
 
-            // Show region label for exec+admin
             if (currentUser.isExecAdmin && currentUser.region_id) {
                 const { data: region } = await supabase.from('regions').select('name').eq('id', currentUser.region_id).single();
                 const label = document.getElementById('exec-region-label');
@@ -270,11 +369,10 @@
                 }
             }
 
-            await loadStats();
             await loadSoftwareCategories();
+            await loadStats();
             await loadLicenses();
 
-            // Enable keyboard search for all dropdowns
             Utils.enableAllSelectsKeyboardSearch('select');
 
             document.getElementById('loading-screen').classList.add('hidden');
@@ -287,8 +385,15 @@
         async function loadSoftwareCategories() {
             const { data } = await supabase.from('software_categories').select('*').eq('is_active', true).order('name');
             softwareCategories = data || [];
+            
+            // Populate modal category select
             const select = document.getElementById('license-category');
             select.innerHTML = '<option value="">-- Select Category --</option>' +
+                softwareCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            
+            // Populate filter category select
+            const filterSelect = document.getElementById('filter-category');
+            filterSelect.innerHTML = '<option value="">All Categories</option>' +
                 softwareCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
         }
 
@@ -319,10 +424,23 @@
             if (regionId) expiredQ = expiredQ.eq('region_id', regionId);
             const { count: expired } = await expiredQ;
 
+            // Get total seat usage (region-scoped)
+            let totalSeatsQ = supabase.from('software_licenses').select('id, seats');
+            if (regionId) totalSeatsQ = totalSeatsQ.eq('region_id', regionId);
+            const { data: seatsData } = await totalSeatsQ;
+            const totalSeats = seatsData?.reduce((sum, l) => sum + (l.seats || 0), 0) || 0;
+            const regionLicenseIds = (seatsData || []).map(l => l.id);
+            let usedSeats = 0;
+            if (regionLicenseIds.length > 0) {
+                const { count } = await supabase.from('license_assignments').select('*', { count: 'exact', head: true }).in('license_id', regionLicenseIds);
+                usedSeats = count || 0;
+            }
+
             document.getElementById('stat-total').textContent = total || 0;
             document.getElementById('stat-active').textContent = active || 0;
             document.getElementById('stat-expiring').textContent = expiring || 0;
             document.getElementById('stat-expired').textContent = expired || 0;
+            document.getElementById('stat-seats').textContent = `${usedSeats || 0}/${totalSeats}`;
         }
 
         async function loadLicenses() {
@@ -330,22 +448,33 @@
             tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-400">Loading...</td></tr>';
 
             let query = supabase.from('software_licenses').select('*, category:software_categories(id, name)', { count: 'exact' });
-            // Apply region filter
             const regionId = Auth.getRegionId();
             if (regionId) query = query.eq('region_id', regionId);
-            if (searchTerm) query = query.ilike('name', `%${searchTerm}%`);
+            if (searchTerm) query = query.or(`name.ilike.%${searchTerm}%,vendor.ilike.%${searchTerm}%`);
+            if (filterCategory) query = query.eq('category_id', filterCategory);
+            
+            // Status filter
+            const today = new Date().toISOString().split('T')[0];
+            const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            if (filterStatus === 'active') {
+                query = query.or(`expiry_date.is.null,expiry_date.gt.${thirtyDays}`);
+            } else if (filterStatus === 'expiring') {
+                query = query.gte('expiry_date', today).lte('expiry_date', thirtyDays);
+            } else if (filterStatus === 'expired') {
+                query = query.lt('expiry_date', today);
+            } else if (filterStatus === 'perpetual') {
+                query = query.is('expiry_date', null);
+            }
 
-            // Pagination
             const from = (currentPage - 1) * pageSize;
             const to = from + pageSize - 1;
 
-            const { data: licenses, count, error } = await query.order('expiry_date', { ascending: true }).range(from, to);
+            const { data: licenses, count, error } = await query.order('expiry_date', { ascending: true, nullsFirst: false }).range(from, to);
             if (error) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-400">Failed to load</td></tr>'; return; }
 
             document.getElementById('licenses-count').textContent = `(${count || 0})`;
             
-            // Update pagination info
-            totalPages = Math.ceil(count / pageSize);
+            totalPages = Math.ceil((count || 0) / pageSize) || 1;
             const startRecord = count > 0 ? from + 1 : 0;
             const endRecord = Math.min(from + pageSize, count || 0);
             document.getElementById('pagination-info').textContent = 
@@ -357,17 +486,32 @@
                 return;
             }
 
-            const today = new Date();
+            // Fetch seat usage for visible licenses
+            const licenseIds = licenses.map(l => l.id);
+            const { data: assignments } = await supabase
+                .from('license_assignments')
+                .select('license_id')
+                .in('license_id', licenseIds);
+            
+            seatUsageMap = {};
+            (assignments || []).forEach(a => {
+                seatUsageMap[a.license_id] = (seatUsageMap[a.license_id] || 0) + 1;
+            });
+
+            const todayDate = new Date();
             const getStatus = (expiry) => {
                 if (!expiry) return { label: 'Perpetual', class: 'badge-info' };
                 const exp = new Date(expiry);
-                if (exp < today) return { label: 'Expired', class: 'badge-danger' };
+                if (exp < todayDate) return { label: 'Expired', class: 'badge-danger' };
                 if (exp < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) return { label: 'Expiring', class: 'badge-warning' };
                 return { label: 'Active', class: 'badge-success' };
             };
 
             tbody.innerHTML = licenses.map(l => {
                 const status = getStatus(l.expiry_date);
+                const used = seatUsageMap[l.id] || 0;
+                const total = l.seats || 1;
+                const seatClass = used >= total ? 'text-red-400' : used > 0 ? 'text-yellow-400' : 'text-slate-400';
                 return `
                     <tr>
                         <td>
@@ -377,16 +521,23 @@
                         <td class="text-sm">${l.category?.name || '<span class="text-slate-500">Uncategorized</span>'}</td>
                         <td class="font-mono text-sm">${l.license_key ? '••••' + l.license_key.slice(-8) : '-'}</td>
                         <td class="capitalize">${l.license_type || '-'}</td>
-                        <td>${l.seats || 1}</td>
+                        <td><span class="${seatClass} font-medium">${used}</span><span class="text-slate-500">/${total}</span></td>
                         <td>${l.expiry_date ? new Date(l.expiry_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : 'Never'}</td>
                         <td><span class="badge ${status.class}">${status.label}</span></td>
                         <td class="text-right">
-                            ${currentUser.role !== 'viewer' ? `
-                            <button class="btn btn-sm btn-secondary" onclick="editLicense('${l.id}')">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                <p>Edit</p>
-                            </button>
-                            ` : '<span class="text-slate-500 text-sm">View Only</span>'}
+                            <div class="flex gap-1 justify-end">
+                                <button class="btn btn-sm btn-secondary" onclick="viewLicenseDetail('${l.id}')" title="View Assignments">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                                ${currentUser.role !== 'viewer' ? `
+                                <button class="btn btn-sm btn-secondary" onclick="editLicense('${l.id}')" title="Edit">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                </button>
+                                <button class="btn btn-sm" style="color:#ef4444;" onclick="promptDelete('${l.id}')" title="Delete">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                                ` : ''}
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -398,15 +549,7 @@
         function updatePagination() {
             const container = document.getElementById('pagination-buttons');
             let html = '';
-
-            // Previous button
-            html += `
-                <button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
-                    Previous
-                </button>
-            `;
-
-            // Page numbers
+            html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
             for (let i = 1; i <= totalPages; i++) {
                 if (i === currentPage) {
                     html += `<button class="btn btn-sm btn-primary">${i}</button>`;
@@ -416,20 +559,295 @@
                     html += `<span class="text-slate-400 px-2">...</span>`;
                 }
             }
-
-            // Next button
-            html += `
-                <button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
-                    Next
-                </button>
-            `;
-
+            html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
             container.innerHTML = html;
         }
+
+        // === License Detail / Assignment Management ===
+
+        async function viewLicenseDetail(id) {
+            detailLicenseId = id;
+            const { data: license } = await supabase.from('software_licenses').select('*, category:software_categories(name)').eq('id', id).single();
+            if (!license) return;
+
+            const todayDate = new Date();
+            const getStatus = (expiry) => {
+                if (!expiry) return { label: 'Perpetual', class: 'text-blue-400' };
+                const exp = new Date(expiry);
+                if (exp < todayDate) return { label: 'Expired', class: 'text-red-400' };
+                if (exp < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) return { label: 'Expiring', class: 'text-yellow-400' };
+                return { label: 'Active', class: 'text-green-400' };
+            };
+
+            const status = getStatus(license.expiry_date);
+            const used = seatUsageMap[id] || 0;
+            const total = license.seats || 1;
+
+            document.getElementById('detail-modal-title').textContent = license.name;
+            document.getElementById('detail-vendor').textContent = license.vendor || '-';
+            document.getElementById('detail-type').textContent = license.license_type || '-';
+            
+            const seatColor = used >= total ? 'text-red-400' : 'text-green-400';
+            document.getElementById('detail-seats').innerHTML = `<span class="${seatColor}">${used} used</span> / ${total} total`;
+            document.getElementById('detail-status').innerHTML = `<span class="${status.class}">${status.label}</span>`;
+
+            if (license.notes) {
+                document.getElementById('detail-notes').textContent = license.notes;
+                document.getElementById('detail-notes-section').style.display = '';
+            } else {
+                document.getElementById('detail-notes-section').style.display = 'none';
+            }
+
+            const assignBtn = document.getElementById('assign-employee-btn');
+            if (currentUser.role === 'viewer' || used >= total) {
+                assignBtn.style.display = 'none';
+            } else {
+                assignBtn.style.display = '';
+            }
+            document.getElementById('assign-form').classList.add('hidden');
+
+            await loadAssignedEmployees(id);
+            document.getElementById('detail-modal').classList.remove('hidden');
+        }
+
+        async function loadAssignedEmployees(licenseId) {
+            const container = document.getElementById('assigned-employees-list');
+            container.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Loading...</p>';
+
+            // Get license assignments with asset info
+            const { data: assignmentRows, error } = await supabase
+                .from('license_assignments')
+                .select('id, assigned_date, notes, asset:assets(id, asset_tag, brand, model)')
+                .eq('license_id', licenseId);
+
+            if (error || !assignmentRows?.length) {
+                container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">No employees assigned to this license</p>';
+                return;
+            }
+
+            // Get the employees assigned to these assets
+            const assetIds = assignmentRows.map(a => a.asset?.id).filter(Boolean);
+            const { data: empAssignments } = await supabase
+                .from('asset_assignments')
+                .select('asset_id, employee:employees(id, first_name, last_name, department, position, employee_id)')
+                .in('asset_id', assetIds)
+                .is('returned_date', null);
+
+            // Build asset -> employee map
+            const assetEmployeeMap = {};
+            (empAssignments || []).forEach(ea => {
+                if (ea.employee) assetEmployeeMap[ea.asset_id] = ea.employee;
+            });
+
+            container.innerHTML = `<div class="space-y-2">${assignmentRows.map(a => {
+                const emp = a.asset ? assetEmployeeMap[a.asset.id] : null;
+                const empName = emp ? `${emp.first_name} ${emp.last_name}` : 'Unassigned';
+                const empDetail = emp ? [emp.department, emp.position].filter(Boolean).join(' • ') : '';
+                const assetInfo = a.asset ? `${a.asset.asset_tag} — ${a.asset.brand || ''} ${a.asset.model || ''}` : 'Unknown asset';
+                return `
+                <div class="flex items-center justify-between bg-slate-700/50 rounded-lg p-3">
+                    <div class="flex items-center gap-3">
+                        <div class="avatar avatar-sm ${emp ? 'bg-blue-600' : 'bg-slate-600'}">
+                            <span class="text-xs">${emp ? (emp.first_name[0] + emp.last_name[0]) : '?'}</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-white">${empName}${emp?.employee_id ? ' <span class="text-slate-400 text-xs">(' + emp.employee_id + ')</span>' : ''}</p>
+                            <p class="text-xs text-slate-400">${empDetail}</p>
+                            <p class="text-xs text-slate-500">via ${assetInfo} • ${a.assigned_date ? new Date(a.assigned_date).toLocaleDateString() : '-'}</p>
+                        </div>
+                    </div>
+                    ${currentUser.role !== 'viewer' ? `
+                    <button class="btn btn-sm" style="color:#ef4444;" onclick="unassignLicense('${a.id}')" title="Remove">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>` : ''}
+                </div>`;
+            }).join('')}</div>`;
+        }
+
+        async function toggleAssignForm() {
+            const form = document.getElementById('assign-form');
+            if (form.classList.contains('hidden')) {
+                const select = document.getElementById('assign-employee-select');
+                select.innerHTML = '<option value="">Loading employees...</option>';
+                form.classList.remove('hidden');
+
+                const regionId = Auth.getRegionId();
+
+                // Get employees for this region who have active hardware assignments
+                let empQ = supabase.from('employees')
+                    .select('id, first_name, last_name, employee_id, department_id, departments(name)')
+                    .eq('status', 'active');
+                if (regionId) empQ = empQ.eq('region_id', regionId);
+                const { data: employees } = await empQ;
+
+                if (!employees?.length) {
+                    select.innerHTML = '<option value="">No employees available</option>';
+                    return;
+                }
+
+                const empIds = employees.map(e => e.id);
+
+                // Get their active asset assignments
+                const { data: activeAssignments } = await supabase
+                    .from('asset_assignments')
+                    .select('employee_id, asset_id')
+                    .in('employee_id', empIds)
+                    .is('returned_date', null);
+
+                // Build employee -> asset IDs map
+                const empAssetMap = {};
+                (activeAssignments || []).forEach(a => {
+                    if (!empAssetMap[a.employee_id]) empAssetMap[a.employee_id] = [];
+                    empAssetMap[a.employee_id].push(a.asset_id);
+                });
+
+                // Get existing license assignments for this license
+                const { data: existing } = await supabase.from('license_assignments').select('asset_id').eq('license_id', detailLicenseId);
+                const existingAssetIds = new Set((existing || []).map(e => e.asset_id));
+
+                // Filter: only employees with hardware who don't already have this license on all their assets
+                const availableEmployees = employees.filter(e => {
+                    const assetIds = empAssetMap[e.id];
+                    if (!assetIds?.length) return false; // No hardware = can't assign
+                    return assetIds.some(aid => !existingAssetIds.has(aid)); // Has at least one unlinked asset
+                });
+
+                if (!availableEmployees.length) {
+                    select.innerHTML = '<option value="">No available employees (need hardware assignment first)</option>';
+                } else {
+                    availableEmployees.sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`));
+                    select.innerHTML = '<option value="">Select an employee...</option>' +
+                        availableEmployees.map(e => `<option value="${e.id}">${e.first_name} ${e.last_name}${e.employee_id ? ' (' + e.employee_id + ')' : ''} — ${e.departments?.name || 'No Dept'}</option>`).join('');
+                }
+            } else {
+                form.classList.add('hidden');
+            }
+        }
+
+        async function assignLicenseToEmployee() {
+            const employeeId = document.getElementById('assign-employee-select').value;
+            if (!employeeId) { showToast('Please select an employee', 'error'); return; }
+
+            // Find the employee's first asset that doesn't already have this license
+            const { data: empAssignments } = await supabase
+                .from('asset_assignments')
+                .select('asset_id')
+                .eq('employee_id', employeeId)
+                .is('returned_date', null);
+
+            const assetIds = (empAssignments || []).map(a => a.asset_id);
+            if (!assetIds.length) {
+                showToast('Employee has no hardware assets assigned', 'error');
+                return;
+            }
+
+            // Find which assets don't already have this license
+            const { data: existing } = await supabase.from('license_assignments').select('asset_id').eq('license_id', detailLicenseId);
+            const existingSet = new Set((existing || []).map(e => e.asset_id));
+            const availableAssetId = assetIds.find(aid => !existingSet.has(aid));
+
+            if (!availableAssetId) {
+                showToast('Employee already has this license on all their assets', 'error');
+                return;
+            }
+
+            const result = await Licenses.assignToAsset(detailLicenseId, availableAssetId, 'Assigned via Software Licenses page');
+            if (!result.success) {
+                showToast(result.error || 'Failed to assign', 'error');
+                return;
+            }
+
+            showToast('License assigned to employee', 'success');
+            document.getElementById('assign-form').classList.add('hidden');
+            seatUsageMap[detailLicenseId] = (seatUsageMap[detailLicenseId] || 0) + 1;
+            await loadAssignedEmployees(detailLicenseId);
+            
+            // Update seat display in detail modal
+            const { data: license } = await supabase.from('software_licenses').select('seats').eq('id', detailLicenseId).single();
+            const used = seatUsageMap[detailLicenseId] || 0;
+            const total = license?.seats || 1;
+            const seatColor = used >= total ? 'text-red-400' : 'text-green-400';
+            document.getElementById('detail-seats').innerHTML = `<span class="${seatColor}">${used} used</span> / ${total} total`;
+            if (used >= total) document.getElementById('assign-employee-btn').style.display = 'none';
+
+            loadStats();
+            loadLicenses();
+        }
+
+        async function unassignLicense(assignmentId) {
+            if (!confirm('Remove this license assignment?')) return;
+
+            const result = await Licenses.removeFromAsset(assignmentId);
+            if (!result.success) {
+                showToast(result.error || 'Failed to remove', 'error');
+                return;
+            }
+
+            showToast('Assignment removed', 'success');
+            seatUsageMap[detailLicenseId] = Math.max(0, (seatUsageMap[detailLicenseId] || 0) - 1);
+            await loadAssignedEmployees(detailLicenseId);
+
+            const { data: license } = await supabase.from('software_licenses').select('seats').eq('id', detailLicenseId).single();
+            const used = seatUsageMap[detailLicenseId] || 0;
+            const total = license?.seats || 1;
+            const seatColor = used >= total ? 'text-red-400' : 'text-green-400';
+            document.getElementById('detail-seats').innerHTML = `<span class="${seatColor}">${used} used</span> / ${total} total`;
+            document.getElementById('assign-employee-btn').style.display = '';
+
+            loadStats();
+            loadLicenses();
+        }
+
+        // === Delete License ===
+
+        async function promptDelete(id) {
+            const { data: license } = await supabase.from('software_licenses').select('*').eq('id', id).single();
+            if (!license) return;
+            deleteLicenseData = license;
+            document.getElementById('delete-license-name').textContent = license.name;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        async function confirmDelete() {
+            if (!deleteLicenseData) return;
+            const btn = document.getElementById('confirm-delete-btn');
+            btn.disabled = true;
+            btn.textContent = 'Deleting...';
+
+            try {
+                const { count } = await supabase
+                    .from('license_assignments')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('license_id', deleteLicenseData.id);
+
+                if (count > 0) {
+                    showToast('Cannot delete: license has active assignments. Remove them first.', 'error');
+                    return;
+                }
+
+                const { error } = await supabase.from('software_licenses').delete().eq('id', deleteLicenseData.id);
+                if (error) throw error;
+
+                await Audit.logLicenseDeleted(deleteLicenseData);
+                showToast('License deleted', 'success');
+                closeDeleteModal();
+                loadStats();
+                loadLicenses();
+            } catch (err) {
+                showToast(err.message || 'Failed to delete', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Delete';
+            }
+        }
+
+        // === Window exports ===
 
         window.toggleSidebar = () => { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-overlay').classList.toggle('hidden'); };
         window.handleLogout = () => Utils.confirmLogout(supabase);
         window.handleSearch = (v) => { searchTerm = v; currentPage = 1; loadLicenses(); };
+        window.handleCategoryFilter = (v) => { filterCategory = v; currentPage = 1; loadLicenses(); };
+        window.handleStatusFilter = (v) => { filterStatus = v; currentPage = 1; loadLicenses(); };
         
         window.changePage = function(page) {
             if (page < 1 || page > totalPages) return;
@@ -446,6 +864,15 @@
             document.getElementById('license-modal').classList.remove('hidden');
         };
         window.closeLicenseModal = () => document.getElementById('license-modal').classList.add('hidden');
+        window.closeDetailModal = () => { document.getElementById('detail-modal').classList.add('hidden'); detailLicenseId = null; };
+        window.closeDeleteModal = () => { document.getElementById('delete-modal').classList.add('hidden'); deleteLicenseData = null; };
+
+        window.viewLicenseDetail = viewLicenseDetail;
+        window.toggleAssignForm = toggleAssignForm;
+        window.assignLicenseToEmployee = assignLicenseToEmployee;
+        window.unassignLicense = unassignLicense;
+        window.promptDelete = promptDelete;
+        window.confirmDelete = confirmDelete;
 
         window.editLicense = async (id) => {
             const { data: license } = await supabase.from('software_licenses').select('*').eq('id', id).single();
@@ -472,25 +899,13 @@
             const errorElement = document.getElementById('license-key-error');
             const licenseKey = keyInput.value.trim();
             const licenseId = document.getElementById('license-id').value;
-
-            // Convert to uppercase automatically
             keyInput.value = keyInput.value.toUpperCase();
 
-            // Only check for duplicates if key is not empty
-            if (!licenseKey) {
-                errorElement.classList.add('hidden');
-                return;
-            }
+            if (!licenseKey) { errorElement.classList.add('hidden'); return; }
 
             try {
-                // Check if license key already exists
                 let query = supabase.from('software_licenses').select('id', { count: 'exact', head: true }).eq('license_key', licenseKey);
-                
-                // If editing, exclude current license from check
-                if (licenseId) {
-                    query = query.neq('id', licenseId);
-                }
-                
+                if (licenseId) query = query.neq('id', licenseId);
                 const { count } = await query;
                 
                 if (count > 0) {
@@ -510,7 +925,6 @@
             const licenseKey = document.getElementById('license-key').value.trim();
             const errorElement = document.getElementById('license-key-error');
             
-            // Check if error is showing (means duplicate exists)
             if (licenseKey && !errorElement.classList.contains('hidden')) {
                 showToast('License key already exists', 'error');
                 return;
@@ -529,25 +943,19 @@
                 notes: document.getElementById('license-notes').value || null
             };
 
-            // Get submit button
             const submitBtn = e.target.querySelector('button[type="submit"]');
             
-            // Handle form submission with loading state
             await Utils.handleFormSubmit(submitBtn, async () => {
                 let result;
                 if (id) {
-                    // Get old data for audit log
                     const { data: oldData } = await supabase.from('software_licenses').select('*').eq('id', id).single();
-                    
                     result = await supabase.from('software_licenses').update(data).eq('id', id).select();
-                    
                     if (!result.error && result.data && result.data[0]) {
                         await Audit.logLicenseUpdated(id, oldData, result.data[0]);
                     }
                 } else {
-                    data.region_id = Auth.getRegionId(); // Assign to user's region
+                    data.region_id = Auth.getRegionId();
                     result = await supabase.from('software_licenses').insert([data]).select();
-                    
                     if (!result.error && result.data && result.data[0]) {
                         await Audit.logLicenseCreated(result.data[0]);
                     }

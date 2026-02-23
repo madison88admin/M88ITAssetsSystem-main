@@ -221,7 +221,7 @@ const Licenses = {
                 .select('id')
                 .eq('license_id', licenseId)
                 .eq('asset_id', assetId)
-                .single();
+                .maybeSingle();
             
             if (existing) {
                 throw new Error('License is already assigned to this asset');
