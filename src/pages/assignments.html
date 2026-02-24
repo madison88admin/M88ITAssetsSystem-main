@@ -162,6 +162,7 @@
                             <select id="lacking-filter" class="form-select text-sm" onchange="handleFilterChange()">
                                 <option value="all">All Employees</option>
                                 <option value="lacking">Lacking Assets Only</option>
+                                <option value="no-assignment">No Assignment</option>
                             </select>
                         </div>
                     </div>
@@ -315,9 +316,9 @@
                         <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                         Software Licenses
                     </label>
-                    <p class="text-xs text-slate-400 mb-2">Check categories to assign available software licenses</p>
+                    <p class="text-xs text-slate-400 mb-2">Check products to assign available software licenses</p>
                     <div id="rc-sw-container" class="space-y-1 max-h-48 overflow-y-auto p-2 bg-slate-800 rounded-lg border border-slate-700">
-                        <p class="text-slate-400 text-sm text-center py-2">Loading categories...</p>
+                        <p class="text-slate-400 text-sm text-center py-2">Loading products...</p>
                     </div>
                 </div>
             </div>
@@ -719,12 +720,17 @@
                 let filteredData = employeeViewData;
                 if (lackingFilter === 'lacking') {
                     filteredData = filteredData.filter(d => d.isLacking);
+                } else if (lackingFilter === 'no-assignment') {
+                    // Employees with zero HW, zero SW, and zero requirements
+                    filteredData = filteredData.filter(d => d.activeHWCount === 0 && d.swCount === 0 && d.totalRequired === 0);
                 }
-                // Status-based employee filtering
-                if (statusFilter === 'active') {
-                    filteredData = filteredData.filter(d => d.activeHWCount > 0 || d.swCount > 0 || d.totalRequired > 0);
-                } else if (statusFilter === 'returned') {
-                    filteredData = filteredData.filter(d => d.returnedAssignments.length > 0);
+                // Status-based employee filtering (skip when showing no-assignment since they have nothing)
+                if (lackingFilter !== 'no-assignment') {
+                    if (statusFilter === 'active') {
+                        filteredData = filteredData.filter(d => d.activeHWCount > 0 || d.swCount > 0 || d.totalRequired > 0);
+                    } else if (statusFilter === 'returned') {
+                        filteredData = filteredData.filter(d => d.returnedAssignments.length > 0);
+                    }
                 }
 
                 // Update count
@@ -831,9 +837,14 @@
                         `;
                     }
 
+                    // Check if employee has absolutely no assignments
+                    const hasNoAssignment = activeHWCount === 0 && swCount === 0 && totalRequired === 0;
+
                     // Status badges
                     let statusBadge = '';
-                    if (totalRequired === 0) {
+                    if (hasNoAssignment) {
+                        statusBadge = '<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>No assigned asset yet</span>';
+                    } else if (totalRequired === 0) {
                         statusBadge = '<span class="badge badge-gray">No Requirements</span>';
                     } else if (!isLacking) {
                         statusBadge = '<span class="badge badge-success">Complete</span>';
@@ -842,11 +853,11 @@
                     }
 
                     return `
-                        <div class="bg-slate-800 rounded-lg border ${isLacking ? 'border-red-500/40' : 'border-slate-700'} overflow-hidden">
+                        <div class="bg-slate-800 rounded-lg border ${hasNoAssignment ? 'border-amber-500/40' : isLacking ? 'border-red-500/40' : 'border-slate-700'} overflow-hidden">
                             <!-- Employee Header -->
                             <button class="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-750 transition-colors" onclick="toggleEmployee('req-${emp.id}')">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full ${isLacking ? 'bg-red-600' : totalRequired > 0 ? 'bg-green-600' : 'bg-slate-600'} flex items-center justify-center text-white font-semibold text-sm">
+                                    <div class="w-10 h-10 rounded-full ${hasNoAssignment ? 'bg-amber-600' : isLacking ? 'bg-red-600' : totalRequired > 0 ? 'bg-green-600' : 'bg-slate-600'} flex items-center justify-center text-white font-semibold text-sm">
                                         ${initials}
                                     </div>
                                     <div class="text-left">
@@ -875,6 +886,15 @@
                             </button>
                             <!-- Checklist (expandable) -->
                             <div id="employee-req-${emp.id}" class="hidden px-4 pb-4">
+                                ${hasNoAssignment ? `
+                                <div class="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg mb-3">
+                                    <svg class="w-8 h-8 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                                    <div>
+                                        <p class="text-amber-300 font-semibold text-base">No assigned asset yet</p>
+                                        <p class="text-sm text-slate-400 mt-0.5">This employee has been newly added and does not have any hardware or software assigned yet. Use "Define Requirements" to set up their required assets.</p>
+                                    </div>
+                                </div>
+                                ` : ''}
                                 ${checklistHtml ? `<div class="space-y-2">${checklistHtml}</div>` : ''}
                                 ${softwareLicenses.length > 0 ? `
                                     <div class="${checklistHtml ? 'mt-4 pt-3 border-t border-slate-700' : ''}">
@@ -1182,13 +1202,14 @@
                     .eq('is_active', true)
                     .order('name');
 
-                // Available asset counts per category
-                let assetQ = supabase.from('assets').select('id, category_id').eq('status', 'available');
+                // Available assets per category (with names)
+                let assetQ = supabase.from('assets').select('id, category_id, name, asset_tag').eq('status', 'available').order('name');
                 if (regionId) assetQ = assetQ.eq('region_id', regionId);
                 const { data: availableAssets } = await assetQ;
-                const availableCountByCategory = {};
+                const availableByCategory = {};
                 (availableAssets || []).forEach(a => {
-                    availableCountByCategory[a.category_id] = (availableCountByCategory[a.category_id] || 0) + 1;
+                    if (!availableByCategory[a.category_id]) availableByCategory[a.category_id] = [];
+                    availableByCategory[a.category_id].push({ id: a.id, name: a.name, asset_tag: a.asset_tag });
                 });
 
                 // Existing HW assignments for this employee
@@ -1219,31 +1240,47 @@
                 if (!hwCats || hwCats.length === 0) {
                     hwContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-2">No hardware categories available</p>';
                 } else {
-                    hwContainer.innerHTML = hwCats.map(c => {
+                    // Sort: assigned/required first, then available (alphabetically), then unavailable (alphabetically)
+                    const sortedHWCats = [...hwCats].sort((a, b) => {
+                        const aAssigned = (rcHwAssignmentMap[a.id] || []).length > 0 || reqCatIds.has(a.id);
+                        const bAssigned = (rcHwAssignmentMap[b.id] || []).length > 0 || reqCatIds.has(b.id);
+                        const aAvail = (availableByCategory[a.id] || []).length > 0;
+                        const bAvail = (availableByCategory[b.id] || []).length > 0;
+                        const aOrder = aAssigned ? 0 : aAvail ? 1 : 2;
+                        const bOrder = bAssigned ? 0 : bAvail ? 1 : 2;
+                        if (aOrder !== bOrder) return aOrder - bOrder;
+                        return a.name.localeCompare(b.name);
+                    });
+
+                    hwContainer.innerHTML = sortedHWCats.map(c => {
                         const assignments = rcHwAssignmentMap[c.id] || [];
                         const isAssigned = assignments.length > 0;
                         const isRequired = reqCatIds.has(c.id);
                         const isChecked = isAssigned || isRequired;
-                        const availableCount = availableCountByCategory[c.id] || 0;
+                        const availableList = availableByCategory[c.id] || [];
+                        const availableCount = availableList.length;
+                        const isUnavailable = !isAssigned && !isRequired && availableCount === 0;
 
                         let statusHtml = '';
                         if (isAssigned) {
                             const assetInfo = assignments.map(a => a.asset_tag || a.asset_name).join(', ');
-                            statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[160px]" title="${assetInfo}">\u2713 ${assetInfo}</span>`;
+                            statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[200px]" title="${assetInfo}">\u2713 ${assetInfo}</span>`;
                         } else if (availableCount > 0) {
-                            statusHtml = `<span class="text-xs text-slate-500">${availableCount} available</span>`;
+                            const assetNames = availableList.map(a => a.name + (a.asset_tag ? ' (' + a.asset_tag + ')' : '')).join(', ');
+                            statusHtml = `<span class="text-xs text-blue-400 truncate max-w-[200px]" title="${assetNames}">${availableList[0].name}${availableList[0].asset_tag ? ' (' + availableList[0].asset_tag + ')' : ''}${availableCount > 1 ? ' +' + (availableCount - 1) + ' more' : ''}</span>`;
                         } else {
-                            statusHtml = `<span class="text-xs text-red-400">None available</span>`;
+                            statusHtml = `<span class="text-xs text-red-400">\u2717 None available</span>`;
                         }
 
                         return `
-                            <div class="flex items-center justify-between p-1.5 rounded hover:bg-slate-700">
-                                <label class="flex items-center gap-2 cursor-pointer text-sm flex-shrink-0">
+                            <div class="flex items-center justify-between p-1.5 rounded ${isUnavailable ? 'opacity-50' : 'hover:bg-slate-700'}">
+                                <label class="flex items-center gap-2 ${isUnavailable ? 'cursor-not-allowed' : 'cursor-pointer'} text-sm flex-shrink-0">
                                     <input type="checkbox" class="rc-hw-cb rounded border-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                                         value="${c.id}"
                                         data-name="${c.name}"
                                         data-available="${availableCount}"
-                                        ${isChecked ? 'checked' : ''}>
+                                        ${isChecked ? 'checked' : ''}
+                                        ${isUnavailable ? 'disabled' : ''}>
                                     <span class="text-slate-300">${c.name}</span>
                                 </label>
                                 ${statusHtml}
@@ -1270,10 +1307,13 @@
                     usedSeatsMap[la.license_id] = (usedSeatsMap[la.license_id] || 0) + 1;
                 });
                 const availableBySWCategory = {};
+                const availableSWByCategory = {};
                 (allLicenses || []).forEach(lic => {
                     const avail = lic.seats - (usedSeatsMap[lic.id] || 0);
                     if (avail > 0) {
                         availableBySWCategory[lic.category_id] = (availableBySWCategory[lic.category_id] || 0) + avail;
+                        if (!availableSWByCategory[lic.category_id]) availableSWByCategory[lic.category_id] = [];
+                        availableSWByCategory[lic.category_id].push({ name: lic.name, vendor: lic.vendor, seats: avail });
                     }
                 });
 
@@ -1318,31 +1358,47 @@
                 }
 
                 if (!swCats || swCats.length === 0) {
-                    swContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-2">No software categories available</p>';
+                    swContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-2">No software products available</p>';
                 } else {
-                    swContainer.innerHTML = swCats.map(c => {
+                    // Sort: assigned first, then available (alphabetically), then unavailable (alphabetically)
+                    const sortedSWCats = [...swCats].sort((a, b) => {
+                        const aAssigned = (rcSwAssignmentMap[a.id] || []).length > 0;
+                        const bAssigned = (rcSwAssignmentMap[b.id] || []).length > 0;
+                        const aAvail = (availableBySWCategory[a.id] || 0) > 0;
+                        const bAvail = (availableBySWCategory[b.id] || 0) > 0;
+                        const aOrder = aAssigned ? 0 : aAvail ? 1 : 2;
+                        const bOrder = bAssigned ? 0 : bAvail ? 1 : 2;
+                        if (aOrder !== bOrder) return aOrder - bOrder;
+                        return a.name.localeCompare(b.name);
+                    });
+
+                    swContainer.innerHTML = sortedSWCats.map(c => {
                         const assignments = rcSwAssignmentMap[c.id] || [];
                         const isAssigned = assignments.length > 0;
                         const availableCount = availableBySWCategory[c.id] || 0;
+                        const isUnavailable = !isAssigned && availableCount === 0;
 
                         let statusHtml = '';
                         if (isAssigned) {
                             const licInfo = assignments.map(a => a.license_name).join(', ');
-                            statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[160px]" title="${licInfo}">\u2713 ${licInfo}</span>`;
+                            statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[200px]" title="${licInfo}">\u2713 ${licInfo}</span>`;
                         } else if (availableCount > 0) {
-                            statusHtml = `<span class="text-xs text-slate-500">${availableCount} seats available</span>`;
+                            const swList = availableSWByCategory[c.id] || [];
+                            const swNames = swList.map(l => l.name).join(', ');
+                            statusHtml = `<span class="text-xs text-blue-400 truncate max-w-[200px]" title="${swNames}">${swList[0].name}${swList.length > 1 ? ' +' + (swList.length - 1) + ' more' : ''}</span>`;
                         } else {
-                            statusHtml = `<span class="text-xs text-red-400">No licenses available</span>`;
+                            statusHtml = `<span class="text-xs text-red-400">\u2717 No licenses available</span>`;
                         }
 
                         return `
-                            <div class="flex items-center justify-between p-1.5 rounded hover:bg-slate-700">
-                                <label class="flex items-center gap-2 cursor-pointer text-sm flex-shrink-0">
+                            <div class="flex items-center justify-between p-1.5 rounded ${isUnavailable ? 'opacity-50' : 'hover:bg-slate-700'}">
+                                <label class="flex items-center gap-2 ${isUnavailable ? 'cursor-not-allowed' : 'cursor-pointer'} text-sm flex-shrink-0">
                                     <input type="checkbox" class="rc-sw-cb rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
                                         value="${c.id}"
                                         data-name="${c.name}"
                                         data-available="${availableCount}"
-                                        ${isAssigned ? 'checked' : ''}>
+                                        ${isAssigned ? 'checked' : ''}
+                                        ${isUnavailable ? 'disabled' : ''}>
                                     <span class="text-slate-300">${c.name}</span>
                                 </label>
                                 ${statusHtml}

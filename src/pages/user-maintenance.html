@@ -598,30 +598,98 @@
                 // Use the primary (highest-level) role for the legacy column
                 const primaryRole = getPrimaryRole(selectedRoles);
 
-                // Invite the user via Supabase Auth
-                const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-                    data: {
-                        full_name: fullName
+                let newUserId = null;
+
+                // Create the user via Supabase Auth signUp (works with anon key)
+                // A temporary password is generated; the user will set their own via password reset
+                const tempPassword = crypto.randomUUID() + '!A1a';
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                    email: email,
+                    password: tempPassword,
+                    options: {
+                        data: {
+                            full_name: fullName
+                        }
                     }
                 });
 
-                if (inviteError) throw inviteError;
+                if (signUpError) {
+                    // If rate-limited, check if the user already exists from a prior attempt
+                    if (signUpError.message.toLowerCase().includes('rate limit')) {
+                        // Look up existing auth user via user_profiles or show helpful message
+                        const { data: existingProfile } = await supabase
+                            .from('user_profiles')
+                            .select('id')
+                            .eq('email', email)
+                            .maybeSingle();
 
-                const newUserId = inviteData.user.id;
+                        if (existingProfile) {
+                            throw new Error(`User ${email} already has a profile. Check the user list.`);
+                        }
 
-                // Create user profile
+                        // User was created in auth but profile insert failed previously.
+                        // We can't look up the auth user ID from the client side without service key.
+                        throw new Error(
+                            'Email rate limit exceeded. The auth account was likely already created by a previous attempt.\n\n' +
+                            'To fix this:\n' +
+                            '1. Go to Supabase Dashboard → Authentication → Users\n' +
+                            '2. Find the user "' + email + '" and copy their User UID\n' +
+                            '3. Run this SQL in the SQL Editor:\n' +
+                            "   INSERT INTO user_profiles (id, email, full_name, role, is_active)\n" +
+                            "   VALUES ('<paste-uid>', '" + email + "', '" + fullName + "', '" + primaryRole + "', true);\n\n" +
+                            'Or wait ~1 hour for the rate limit to reset and try again.'
+                        );
+                    }
+                    throw signUpError;
+                }
+
+                if (!signUpData.user) {
+                    throw new Error('Failed to create user account. The email may already be registered.');
+                }
+
+                // If identities is empty, the user already existed (Supabase returns the user but no new identity)
+                if (signUpData.user.identities && signUpData.user.identities.length === 0) {
+                    throw new Error(`An account with email ${email} already exists. Check the user list or Supabase dashboard.`);
+                }
+
+                newUserId = signUpData.user.id;
+
+                // Send a password reset email so the user can set their own password
+                const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin
+                });
+
+                if (resetError) {
+                    console.warn('Password reset email could not be sent:', resetError.message);
+                }
+
+                // Create user profile (try direct insert, fall back to RPC function)
+                const profilePayload = {
+                    id: newUserId,
+                    email: email,
+                    full_name: fullName,
+                    role: primaryRole,
+                    region_id: selectedRegions.length > 0 ? selectedRegions[0] : null,
+                    is_active: true
+                };
+
                 const { error: profileError } = await supabase
                     .from('user_profiles')
-                    .insert({
-                        id: newUserId,
-                        email: email,
-                        full_name: fullName,
-                        role: primaryRole,
-                        region_id: selectedRegions.length > 0 ? selectedRegions[0] : null,
-                        is_active: true
-                    });
+                    .insert(profilePayload);
 
-                if (profileError) throw profileError;
+                if (profileError) {
+                    // If RLS blocks the direct insert, use the SECURITY DEFINER function
+                    console.warn('Direct insert blocked by RLS, trying RPC fallback...', profileError.message);
+                    const { error: rpcError } = await supabase.rpc('create_user_profile', {
+                        p_user_id: newUserId,
+                        p_email: email,
+                        p_full_name: fullName,
+                        p_role: primaryRole,
+                        p_region_id: selectedRegions.length > 0 ? selectedRegions[0] : null,
+                        p_is_active: true
+                    });
+                    if (rpcError) throw rpcError;
+                }
 
                 // Insert into user_roles junction table
                 if (selectedRoles.length > 0) {
@@ -655,7 +723,7 @@
                     newValues: { email, full_name: fullName, roles: selectedRoles, regions: selectedRegions }
                 });
 
-                showToast(`Invitation sent to ${email}`, 'success');
+                showToast(`User created! A password reset email has been sent to ${email}`, 'success');
                 closeInviteModal();
                 await loadUsers();
 

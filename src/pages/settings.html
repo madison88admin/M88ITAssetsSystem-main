@@ -100,7 +100,7 @@
                     <button onclick="switchTab('permissions')" id="tab-permissions" class="btn btn-secondary">Permissions</button>
                     <button onclick="switchTab('assignment-rules')" id="tab-assignment-rules" class="btn btn-secondary">Assignment Rules</button>
                     <button onclick="switchTab('categories')" id="tab-categories" class="btn btn-secondary">IT Hardware Categories</button>
-                    <button onclick="switchTab('software-categories')" id="tab-software-categories" class="btn btn-secondary">IT Software Categories</button>
+                    <button onclick="switchTab('software-categories')" id="tab-software-categories" class="btn btn-secondary">IT Software Products</button>
                     <!-- <button onclick="switchTab('locations')" id="tab-locations" class="btn btn-secondary">Locations</button>
                     <button onclick="switchTab('departments')" id="tab-departments" class="btn btn-secondary">Departments</button> -->
                 </div>
@@ -254,8 +254,8 @@
                 <div id="section-software-categories" class="settings-section hidden">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Software Categories</h3>
-                            <button class="btn btn-sm btn-primary" onclick="openModal('software-category')">Add Category</button>
+                            <h3 class="card-title">Software Products</h3>
+                            <button class="btn btn-sm btn-primary" onclick="openModal('software-category')">Add Product</button>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="data-table">
@@ -535,7 +535,7 @@
                         </td>
                     </tr>
                 `;
-            }).join('') || '<tr><td colspan="4" class="text-center py-8 text-slate-400">No software categories</td></tr>';
+            }).join('') || '<tr><td colspan="4" class="text-center py-8 text-slate-400">No software products found</td></tr>';
         }
 
         async function loadAssignmentRules() {
@@ -658,7 +658,7 @@
                     break;
             }
             document.getElementById('modal-fields').innerHTML = fields;
-            const titleType = type === 'software-category' ? 'Software Category' : type.charAt(0).toUpperCase() + type.slice(1);
+            const titleType = type === 'software-category' ? 'Software Product' : type.charAt(0).toUpperCase() + type.slice(1);
             document.getElementById('modal-title').textContent = `Add ${titleType}`;
             document.getElementById('edit-modal').classList.remove('hidden');
         };
@@ -678,7 +678,7 @@
             } else {
                 document.getElementById('field-description').value = data.description || '';
             }
-            const editTitleType = type === 'software-category' ? 'Software Category' : type.charAt(0).toUpperCase() + type.slice(1);
+            const editTitleType = type === 'software-category' ? 'Software Product' : type.charAt(0).toUpperCase() + type.slice(1);
             document.getElementById('modal-title').textContent = `Edit ${editTitleType}`;
         };
 
@@ -831,7 +831,7 @@
                             await Audit.log({
                                 action: 'UPDATE',
                                 actionCategory: Audit.CATEGORIES.SETTINGS,
-                                description: `Updated software category: ${oldData.name} → ${data.name}`,
+                                description: `Updated software product: ${oldData.name} → ${data.name}`,
                                 tableName: 'software_categories',
                                 recordId: id,
                                 oldValues: oldData,
@@ -855,7 +855,7 @@
                             await Audit.log({
                                 action: 'CREATE',
                                 actionCategory: Audit.CATEGORIES.SETTINGS,
-                                description: `Created software category: ${newRecord.name}`,
+                                description: `Created software product: ${newRecord.name}`,
                                 tableName: 'software_categories',
                                 recordId: newRecord.id,
                                 newValues: newRecord
@@ -1004,7 +1004,7 @@
         window.toggleSoftwareCategoryStatus = async (id, activate) => {
             try {
                 const { data: category } = await supabase.from('software_categories').select('*').eq('id', id).single();
-                if (!category) throw new Error('Software category not found');
+                if (!category) throw new Error('Software product not found');
 
                 const { error } = await supabase
                     .from('software_categories')
@@ -1016,18 +1016,18 @@
                 await Audit.log({
                     action: 'UPDATE',
                     actionCategory: Audit.CATEGORIES.SETTINGS,
-                    description: `${activate ? 'Activated' : 'Deactivated'} software category: ${category.name}`,
+                    description: `${activate ? 'Activated' : 'Deactivated'} software product: ${category.name}`,
                     tableName: 'software_categories',
                     recordId: id,
                     oldValues: { ...category, is_active: !activate },
                     newValues: { ...category, is_active: activate }
                 });
                 
-                showToast(`Software category ${activate ? 'activated' : 'deactivated'} successfully`, 'success');
+                showToast(`Software product ${activate ? 'activated' : 'deactivated'} successfully`, 'success');
                 await loadSoftwareCategories();
             } catch (error) {
                 console.error('Toggle software category status error:', error);
-                showToast(error.message || 'Failed to update software category status', 'error');
+                showToast(error.message || 'Failed to update software product status', 'error');
             }
         };
 

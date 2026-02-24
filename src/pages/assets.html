@@ -356,12 +356,13 @@
                             </select>
                         </div>
                         
-                        <!-- Location -->
+                        <!-- Location (auto-populated from user's region) -->
                         <div class="form-group">
-                            <label class="form-label" for="asset-location">Table Assignment</label>
-                            <select id="asset-location" class="form-select">
-                                <option value="">Select Table Assignment</option>
-                            </select>
+                            <label class="form-label" for="asset-location-display">Location</label>
+                            <input type="text" id="asset-location-display" class="form-input bg-slate-700 cursor-not-allowed" readonly
+                                title="This field automatically populates according to what region you are assigned to">
+                            <input type="hidden" id="asset-location">
+                            <p class="text-xs text-slate-400 mt-1">Auto-assigned based on your region</p>
                         </div>
                         
                         <!-- Brand -->
@@ -502,6 +503,8 @@
         let searchTerm = '';
         let filters = {};
         let deleteAssetId = null;
+        let userRegionName = '';
+        let userRegionLocationId = null;
         
         // Use the Assets module from assets.js (already available globally)
         const Assets = window.Assets || AssetManager;
@@ -551,6 +554,18 @@
                     if (label && region) {
                         label.textContent = `${region.name}`;
                         label.classList.remove('hidden');
+                    }
+                }
+
+                // Resolve user's region name and matching location_id for the Location field
+                const regionId = Auth.getRegionId();
+                if (regionId) {
+                    const { data: regionData } = await supabase.from('regions').select('country').eq('id', regionId).single();
+                    if (regionData) {
+                        userRegionName = regionData.country;
+                        // Try to find a matching location record by country
+                        const { data: locMatch } = await supabase.from('locations').select('id').ilike('name', regionData.country).maybeSingle();
+                        userRegionLocationId = locMatch?.id || null;
                     }
                 }
 
@@ -694,11 +709,9 @@
                 locations = locs || [];
                 
                 const locationFilter = document.getElementById('location-filter');
-                const assetLocation = document.getElementById('asset-location');
                 
                 locations.forEach(loc => {
                     locationFilter.innerHTML += `<option value="${loc.id}">${loc.name}</option>`;
-                    assetLocation.innerHTML += `<option value="${loc.id}">${loc.name}</option>`;
                 });
             } catch (error) {
                 console.error('Error loading filter options:', error);
@@ -934,6 +947,10 @@
             originalAssetStatus = null; // Reset for new asset
             window.currentAssetCategory = '';
             
+            // Set Location field to user's region (read-only)
+            document.getElementById('asset-location-display').value = userRegionName || 'No region assigned';
+            document.getElementById('asset-location').value = userRegionLocationId || '';
+            
             // Clear serial number error
             const serialError = document.getElementById('serial-error');
             const serialInput = document.getElementById('asset-serial');
@@ -1013,7 +1030,9 @@
                 document.getElementById('asset-id').value = asset.id;
                 document.getElementById('asset-name').value = asset.name || '';
                 document.getElementById('asset-category').value = asset.category_id || '';
-                document.getElementById('asset-location').value = asset.location_id || '';
+                // Set Location field: show region name (read-only), keep location_id in hidden field
+                document.getElementById('asset-location-display').value = userRegionName || 'No region assigned';
+                document.getElementById('asset-location').value = asset.location_id || userRegionLocationId || '';
                 document.getElementById('asset-brand').value = asset.brand || '';
                 document.getElementById('asset-model').value = asset.model || '';
                 document.getElementById('asset-serial').value = asset.serial_number || '';

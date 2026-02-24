@@ -194,7 +194,7 @@
                                     <th>Employee ID</th>
                                     <th>Department</th>
                                     <th>Position</th>
-                                    <th>Table Assignment</th>
+                                    <th>Location</th>
                                     <th>Status</th>
                                     <th style="text-align: right;">Actions</th>
                                 </tr>
@@ -253,15 +253,19 @@
                             <p class="text-xs text-slate-400 mt-1">Maximum 25 characters</p>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="employee-location">Table Assignment</label>
-                            <select id="employee-location" class="form-select"></select>
+                            <label class="form-label" for="employee-location-display">Location</label>
+                            <input type="text" id="employee-location-display" class="form-input bg-slate-700 cursor-not-allowed" readonly
+                                title="This field automatically populates according to what region you are assigned to">
+                            <input type="hidden" id="employee-location">
+                            <p class="text-xs text-slate-400 mt-1">Auto-assigned based on your region</p>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="employee-status">Status</label>
                             <select id="employee-status" class="form-select">
-                                <option value="active">Active</option>
+                                <option value="active" selected>Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
+                            <p id="status-auto-note" class="text-xs text-slate-400 mt-1 hidden">New employees are automatically set to Active</p>
                         </div>
                         <div class="form-group">
                             <label class="form-label flex items-center gap-2">
@@ -278,9 +282,9 @@
                                 <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                                 Software Licenses
                             </label>
-                            <p class="text-xs text-slate-400 mb-2">Check categories to assign available software licenses</p>
+                            <p class="text-xs text-slate-400 mb-2">Check products to assign available software licenses</p>
                             <div id="software-categories-container" class="space-y-1 max-h-48 overflow-y-auto p-2 bg-slate-800 rounded-lg border border-slate-700">
-                                <p class="text-slate-400 text-sm text-center py-2">Loading categories...</p>
+                                <p class="text-slate-400 text-sm text-center py-2">Loading products...</p>
                             </div>
                         </div>
                     </div>
@@ -353,6 +357,8 @@
         let currentUser = null;
         let departments = [];
         let locations = [];
+        let userRegionName = '';
+        let userRegionLocationId = null;
         let assetCategories = [];
         let softwareCategories = [];
         let hwAssignmentMap = {};
@@ -400,6 +406,17 @@
                     if (label && region) {
                         label.textContent = `${region.name}`;
                         label.classList.remove('hidden');
+                    }
+                }
+
+                // Resolve user's region name and matching location_id for the Location field
+                const regionId = Auth.getRegionId();
+                if (regionId) {
+                    const { data: regionData } = await supabase.from('regions').select('country').eq('id', regionId).single();
+                    if (regionData) {
+                        userRegionName = regionData.country;
+                        const { data: locMatch } = await supabase.from('locations').select('id').ilike('name', regionData.country).maybeSingle();
+                        userRegionLocationId = locMatch?.id || null;
                     }
                 }
 
@@ -489,9 +506,6 @@
 
             const { data: locs } = await supabase.from('locations').select('*').order('name');
             locations = locs || [];
-            const locSelect = document.getElementById('employee-location');
-            locSelect.innerHTML = '<option value="">Select Table Assignment</option>';
-            locations.forEach(l => locSelect.innerHTML += `<option value="${l.id}">${l.name}</option>`);
 
             // Load asset categories (hardware)
             const { data: cats } = await supabase.from('asset_categories').select('id, name, is_active, allow_multiple_assignment').eq('is_active', true).order('name');
@@ -522,15 +536,16 @@
                 return;
             }
 
-            // Get available asset counts per category
+            // Get available assets per category (with names)
             const regionId = Auth.getRegionId();
-            let assetQuery = supabase.from('assets').select('id, category_id').eq('status', 'available');
+            let assetQuery = supabase.from('assets').select('id, category_id, name, asset_tag').eq('status', 'available').order('name');
             if (regionId) assetQuery = assetQuery.eq('region_id', regionId);
             const { data: availableAssets } = await assetQuery;
 
-            const availableCountByCategory = {};
+            const availableByCategory = {};
             (availableAssets || []).forEach(a => {
-                availableCountByCategory[a.category_id] = (availableCountByCategory[a.category_id] || 0) + 1;
+                if (!availableByCategory[a.category_id]) availableByCategory[a.category_id] = [];
+                availableByCategory[a.category_id].push({ id: a.id, name: a.name, asset_tag: a.asset_tag });
             });
 
             // Get employee's existing HW assignments (if editing)
@@ -556,29 +571,45 @@
                 });
             }
 
-            container.innerHTML = assetCategories.map(c => {
+            // Sort: assigned first, then available (alphabetically), then unavailable (alphabetically)
+            const sortedHWCats = [...assetCategories].sort((a, b) => {
+                const aAssigned = (hwAssignmentMap[a.id] || []).length > 0;
+                const bAssigned = (hwAssignmentMap[b.id] || []).length > 0;
+                const aAvail = (availableByCategory[a.id] || []).length > 0;
+                const bAvail = (availableByCategory[b.id] || []).length > 0;
+                const aOrder = aAssigned ? 0 : aAvail ? 1 : 2;
+                const bOrder = bAssigned ? 0 : bAvail ? 1 : 2;
+                if (aOrder !== bOrder) return aOrder - bOrder;
+                return a.name.localeCompare(b.name);
+            });
+
+            container.innerHTML = sortedHWCats.map(c => {
                 const assignments = hwAssignmentMap[c.id] || [];
                 const isAssigned = assignments.length > 0;
-                const availableCount = availableCountByCategory[c.id] || 0;
+                const availableList = availableByCategory[c.id] || [];
+                const availableCount = availableList.length;
+                const isUnavailable = !isAssigned && availableCount === 0;
 
                 let statusHtml = '';
                 if (isAssigned) {
                     const assetInfo = assignments.map(a => a.asset_tag || a.asset_name).join(', ');
-                    statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[160px]" title="${assetInfo}">\u2713 ${assetInfo}</span>`;
+                    statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[200px]" title="${assetInfo}">\u2713 ${assetInfo}</span>`;
                 } else if (availableCount > 0) {
-                    statusHtml = `<span class="text-xs text-slate-500">${availableCount} available</span>`;
+                    const assetNames = availableList.map(a => a.name + (a.asset_tag ? ' (' + a.asset_tag + ')' : '')).join(', ');
+                    statusHtml = `<span class="text-xs text-blue-400 truncate max-w-[200px]" title="${assetNames}">${availableList[0].name}${availableList[0].asset_tag ? ' (' + availableList[0].asset_tag + ')' : ''}${availableCount > 1 ? ' +' + (availableCount - 1) + ' more' : ''}</span>`;
                 } else {
-                    statusHtml = `<span class="text-xs text-red-400">None available</span>`;
+                    statusHtml = `<span class="text-xs text-red-400">\u2717 None available</span>`;
                 }
 
                 return `
-                    <div class="flex items-center justify-between p-1.5 rounded hover:bg-slate-700">
-                        <label class="flex items-center gap-2 cursor-pointer text-sm flex-shrink-0">
+                    <div class="flex items-center justify-between p-1.5 rounded ${isUnavailable ? 'opacity-50' : 'hover:bg-slate-700'}">
+                        <label class="flex items-center gap-2 ${isUnavailable ? 'cursor-not-allowed' : 'cursor-pointer'} text-sm flex-shrink-0">
                             <input type="checkbox" class="hw-cat-cb rounded border-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                                 value="${c.id}"
                                 data-name="${c.name}"
                                 data-available="${availableCount}"
-                                ${isAssigned ? 'checked' : ''}>
+                                ${isAssigned ? 'checked' : ''}
+                                ${isUnavailable ? 'disabled' : ''}>
                             <span class="text-slate-300">${c.name}</span>
                         </label>
                         ${statusHtml}
@@ -593,7 +624,7 @@
             initialSWChecked = new Set();
 
             if (!softwareCategories.length) {
-                container.innerHTML = '<p class="text-slate-400 text-sm text-center py-2">No software categories available</p>';
+                container.innerHTML = '<p class="text-slate-400 text-sm text-center py-2">No software products available</p>';
                 return;
             }
 
@@ -615,13 +646,16 @@
                 usedSeatsMap[la.license_id] = (usedSeatsMap[la.license_id] || 0) + 1;
             });
 
-            // Count available seats per software category
+            // Build available licenses per software category (with names)
             const availableBySWCategory = {};
+            const availableSWByCategory = {};
             (allLicenses || []).forEach(lic => {
                 const used = usedSeatsMap[lic.id] || 0;
                 const avail = lic.seats - used;
                 if (avail > 0) {
                     availableBySWCategory[lic.category_id] = (availableBySWCategory[lic.category_id] || 0) + avail;
+                    if (!availableSWByCategory[lic.category_id]) availableSWByCategory[lic.category_id] = [];
+                    availableSWByCategory[lic.category_id].push({ name: lic.name, vendor: lic.vendor, seats: avail });
                 }
             });
 
@@ -686,29 +720,45 @@
                 }
             }
 
-            container.innerHTML = softwareCategories.map(c => {
+            // Sort: assigned first, then available (alphabetically), then unavailable (alphabetically)
+            const sortedSWCats = [...softwareCategories].sort((a, b) => {
+                const aAssigned = (swAssignmentMap[a.id] || []).length > 0;
+                const bAssigned = (swAssignmentMap[b.id] || []).length > 0;
+                const aAvail = (availableBySWCategory[a.id] || 0) > 0;
+                const bAvail = (availableBySWCategory[b.id] || 0) > 0;
+                const aOrder = aAssigned ? 0 : aAvail ? 1 : 2;
+                const bOrder = bAssigned ? 0 : bAvail ? 1 : 2;
+                if (aOrder !== bOrder) return aOrder - bOrder;
+                return a.name.localeCompare(b.name);
+            });
+
+            container.innerHTML = sortedSWCats.map(c => {
                 const assignments = swAssignmentMap[c.id] || [];
                 const isAssigned = assignments.length > 0;
                 const availableCount = availableBySWCategory[c.id] || 0;
+                const isUnavailable = !isAssigned && availableCount === 0;
 
                 let statusHtml = '';
                 if (isAssigned) {
                     const licInfo = assignments.map(a => a.license_name).join(', ');
-                    statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[160px]" title="${licInfo}">\u2713 ${licInfo}</span>`;
+                    statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[200px]" title="${licInfo}">\u2713 ${licInfo}</span>`;
                 } else if (availableCount > 0) {
-                    statusHtml = `<span class="text-xs text-slate-500">${availableCount} seats available</span>`;
+                    const swList = availableSWByCategory[c.id] || [];
+                    const swNames = swList.map(l => l.name).join(', ');
+                    statusHtml = `<span class="text-xs text-blue-400 truncate max-w-[200px]" title="${swNames}">${swList[0].name}${swList.length > 1 ? ' +' + (swList.length - 1) + ' more' : ''}</span>`;
                 } else {
-                    statusHtml = `<span class="text-xs text-red-400">No licenses available</span>`;
+                    statusHtml = `<span class="text-xs text-red-400">\u2717 No licenses available</span>`;
                 }
 
                 return `
-                    <div class="flex items-center justify-between p-1.5 rounded hover:bg-slate-700">
-                        <label class="flex items-center gap-2 cursor-pointer text-sm flex-shrink-0">
+                    <div class="flex items-center justify-between p-1.5 rounded ${isUnavailable ? 'opacity-50' : 'hover:bg-slate-700'}">
+                        <label class="flex items-center gap-2 ${isUnavailable ? 'cursor-not-allowed' : 'cursor-pointer'} text-sm flex-shrink-0">
                             <input type="checkbox" class="sw-cat-cb rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
                                 value="${c.id}"
                                 data-name="${c.name}"
                                 data-available="${availableCount}"
-                                ${isAssigned ? 'checked' : ''}>
+                                ${isAssigned ? 'checked' : ''}
+                                ${isUnavailable ? 'disabled' : ''}>
                             <span class="text-slate-300">${c.name}</span>
                         </label>
                         ${statusHtml}
@@ -843,7 +893,7 @@
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">Loading...</td></tr>';
 
             try {
-                let query = supabase.from('employees').select(`*, department:departments(name), location:locations(name)`, { count: 'exact' });
+                let query = supabase.from('employees').select(`*, department:departments(name), location:locations(name), region:regions(country)`, { count: 'exact' });
                 
                 // Apply region filter
                 const regionId = Auth.getRegionId();
@@ -890,7 +940,7 @@
                         <td class="font-mono text-sm">${emp.employee_id}</td>
                         <td>${emp.department?.name || '-'}</td>
                         <td>${emp.position || '-'}</td>
-                        <td>${emp.location?.name || '-'}</td>
+                        <td>${emp.location?.name || emp.region?.country || '-'}</td>
                         <td><span class="badge ${emp.is_active ? 'badge-success' : 'badge-gray'}">${emp.is_active ? 'Active' : 'Inactive'}</span></td>
                         <td class="text-right">
                             ${currentUser.role !== 'viewer' ? `
@@ -975,6 +1025,17 @@
             document.getElementById('employee-id').value = '';
             document.getElementById('modal-title').textContent = 'Add Employee';
             
+            // Set Location field to user's region (read-only)
+            document.getElementById('employee-location-display').value = userRegionName || 'No region assigned';
+            document.getElementById('employee-location').value = userRegionLocationId || '';
+
+            // Status is always Active for new employees (lock the field)
+            const statusSelectNew = document.getElementById('employee-status');
+            statusSelectNew.value = 'active';
+            statusSelectNew.disabled = true;
+            statusSelectNew.classList.add('bg-slate-700', 'cursor-not-allowed', 'opacity-60');
+            document.getElementById('status-auto-note').classList.remove('hidden');
+            
             // Reset validation states
             document.getElementById('emp-id-error').classList.add('hidden');
             document.getElementById('employee-emp-id').classList.remove('border-red-500');
@@ -996,8 +1057,16 @@
             document.getElementById('employee-email').value = emp.email || '';
             document.getElementById('employee-department').value = emp.department_id || '';
             document.getElementById('employee-position').value = emp.position || '';
-            document.getElementById('employee-location').value = emp.location_id || '';
-            document.getElementById('employee-status').value = emp.is_active ? 'active' : 'inactive';
+            // Set Location field: show region name (read-only), keep location_id in hidden field
+            document.getElementById('employee-location-display').value = userRegionName || 'No region assigned';
+            document.getElementById('employee-location').value = emp.location_id || userRegionLocationId || '';
+
+            // Re-enable status field for editing existing employees
+            const statusSelectEdit = document.getElementById('employee-status');
+            statusSelectEdit.disabled = false;
+            statusSelectEdit.classList.remove('bg-slate-700', 'cursor-not-allowed', 'opacity-60');
+            document.getElementById('status-auto-note').classList.add('hidden');
+            statusSelectEdit.value = emp.is_active ? 'active' : 'inactive';
             document.getElementById('modal-title').textContent = 'Edit Employee';
             
             // Reset validation states
