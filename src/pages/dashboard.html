@@ -13,9 +13,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
+    <!-- Early auth hash redirect (must run BEFORE module scripts) -->
+    <script>
+    (function() {
+        var h = window.location.hash;
+        if (h) {
+            var p = new URLSearchParams(h.substring(1));
+            var t = p.get('type');
+            if (t === 'recovery' || t === 'invite' || t === 'signup' || t === 'magiclink') {
+                window.location.replace('/src/pages/set-password.html' + h);
+            }
+        }
+    })();
+    </script>
+
     <!-- Vendor Libraries (bundled from npm) -->
     <script type="module" src="../scripts/vendor-chart.js"></script>
-    
+
     <!-- Custom Styles (includes Tailwind via build) -->
     <link rel="stylesheet" href="../styles/styles.css">
     
@@ -336,12 +350,41 @@
                 </div>
 
                 <!-- Bottom Row -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="bottom-row-grid" style="--exec-visible: 0">
+                    <!-- Executive Financial Summary (Executive & Exec-Admin only) -->
+                    <div class="card hidden" id="exec-summary-panel">
+                        <div class="card-header flex items-center justify-between">
+                            <div>
+                                <h3 class="card-title">Financial Overview</h3>
+                                <p class="text-xs text-slate-400 mt-1" id="exec-currency-label">Key financial metrics</p>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="prevExecSlide()" class="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition" title="Previous">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                </button>
+                                <button onclick="nextExecSlide()" class="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition" title="Next">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0 relative">
+                            <div id="exec-slides-container" class="exec-carousel">
+                                <!-- Slides will be populated by JS -->
+                                <div class="p-6 text-center text-slate-400">
+                                    <div class="spinner mx-auto mb-3"></div>
+                                    Loading financial data...
+                                </div>
+                            </div>
+                            <!-- Slide indicators -->
+                            <div id="exec-slide-indicators" class="flex justify-center gap-1.5 pb-3"></div>
+                        </div>
+                    </div>
+
                     <!-- Asset Acquisition Trends -->
-                    <div class="card lg:col-span-2">
+                    <div class="card" id="acquisition-trends-card">
                         <div class="card-header">
-                            <h3 class="card-title">Asset Acquisition Trends</h3>
-                            <p class="text-xs text-slate-400 mt-1">Assets added to inventory over the last 12 months</p>
+                            <h3 class="card-title">Asset Activity Trends</h3>
+                            <p class="text-xs text-slate-400 mt-1">Acquisitions, losses, and repairs over the last 12 months</p>
                         </div>
                         <div class="card-body">
                             <div class="chart-container" style="height: 280px;">
@@ -423,6 +466,9 @@
         // Global state
         let currentUser = null;
         let selectedRegionId = null; // null = all regions (for executive) or all assigned regions (for exec+admin)
+        let regionsMap = {}; // region_id → { id, name, code, ... }
+        let exchangeRates = null; // { PHP: 56.2, IDR: 15800, CNY: 7.25, ... } — rates relative to USD
+        let exchangeRatesLoaded = false;
         
         /**
          * Apply region filter to a Supabase query based on current selection
@@ -452,17 +498,6 @@
          */
         async function init() {
             try {
-                // If this page was hit with a recovery/invite hash, redirect to set-password
-                const hash = window.location.hash;
-                if (hash) {
-                    const hashParams = new URLSearchParams(hash.substring(1));
-                    const type = hashParams.get('type');
-                    if (type === 'recovery' || type === 'invite' || type === 'signup') {
-                        window.location.href = '/src/pages/set-password.html' + hash;
-                        return;
-                    }
-                }
-
                 // console.log('🚀 Starting dashboard init...');
                 
                 // Check authentication
@@ -584,6 +619,11 @@
                 // Executive & Exec+Admin: show region dropdown with ALL regions
                 const { data: regions } = await supabase.from('regions').select('*').eq('is_active', true).order('name');
                 
+                if (regions) {
+                    // Build region lookup map (region_id → region object)
+                    regions.forEach(r => { regionsMap[r.id] = r; });
+                }
+                
                 if (regionSelector && regions) {
                     // Populate options
                     regions.forEach(r => {
@@ -648,7 +688,8 @@
                     loadCharts(),
                     loadAcquisitionTrends(),
                     loadHeatmap(),
-                    loadAlerts()
+                    loadAlerts(),
+                    loadExecutiveSummary()
                 ]);
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
@@ -927,6 +968,7 @@
 
         /**
          * Load asset acquisition trends - shows assets added over the last 12 months
+         * Also shows Lost/Damaged and Under Repair trends
          */
         async function loadAcquisitionTrends() {
             try {
@@ -934,21 +976,43 @@
                 const twelveMonthsAgo = new Date();
                 twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
                 
+                // Fetch all three data sources in parallel
                 let trendQuery = supabase
                     .from('assets')
                     .select('created_at, purchase_date')
                     .gte('created_at', twelveMonthsAgo.toISOString());
                 trendQuery = applyRegionFilter(trendQuery);
-                const { data: assets, error } = await trendQuery;
 
-                if (error) {
-                    console.error('Error loading acquisition data:', error);
+                let lostQuery = supabase
+                    .from('lost_assets')
+                    .select('date_reported, created_at, asset:assets(region_id)')
+                    .gte('created_at', twelveMonthsAgo.toISOString());
+
+                let maintQuery = supabase
+                    .from('maintenance_records')
+                    .select('start_date, created_at, asset:assets(region_id)')
+                    .gte('created_at', twelveMonthsAgo.toISOString());
+
+                const [assetsRes, lostRes, maintRes] = await Promise.all([
+                    trendQuery, lostQuery, maintQuery
+                ]);
+
+                if (assetsRes.error) {
+                    console.error('Error loading acquisition data:', assetsRes.error);
                     return;
                 }
 
+                const assets = assetsRes.data || [];
+                // Client-side region filter for lost assets and maintenance (joined through asset)
+                const lostItems = (lostRes.data || []).filter(la => matchesRegionFilter(la.asset?.region_id));
+                const maintItems = (maintRes.data || []).filter(m => matchesRegionFilter(m.asset?.region_id));
+
                 // Generate labels for last 12 months
                 const months = [];
-                const monthCounts = {};
+                const monthKeysOrdered = [];
+                const assetCounts = {};
+                const lostCounts = {};
+                const maintCounts = {};
                 const now = new Date();
                 
                 for (let i = 11; i >= 0; i--) {
@@ -956,27 +1020,53 @@
                     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
                     months.push(monthLabel);
-                    monthCounts[monthKey] = 0;
+                    monthKeysOrdered.push(monthKey);
+                    assetCounts[monthKey] = 0;
+                    lostCounts[monthKey] = 0;
+                    maintCounts[monthKey] = 0;
                 }
 
-                // Count assets by month (using created_at)
-                (assets || []).forEach(asset => {
+                // Count assets added by month (using created_at)
+                assets.forEach(asset => {
                     const date = new Date(asset.created_at);
                     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    if (monthCounts.hasOwnProperty(monthKey)) {
-                        monthCounts[monthKey]++;
+                    if (assetCounts.hasOwnProperty(monthKey)) {
+                        assetCounts[monthKey]++;
                     }
                 });
 
-                const counts = Object.values(monthCounts);
-                const total = counts.reduce((a, b) => a + b, 0);
-                const maxCount = Math.max(...counts, 1);
+                // Count lost/damaged reports by month (using date_reported or created_at)
+                lostItems.forEach(item => {
+                    const dateStr = item.date_reported || item.created_at;
+                    const date = new Date(dateStr);
+                    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    if (lostCounts.hasOwnProperty(monthKey)) {
+                        lostCounts[monthKey]++;
+                    }
+                });
 
-                // Create gradient
+                // Count maintenance records by month (using start_date or created_at)
+                maintItems.forEach(item => {
+                    const dateStr = item.start_date || item.created_at;
+                    const date = new Date(dateStr);
+                    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    if (maintCounts.hasOwnProperty(monthKey)) {
+                        maintCounts[monthKey]++;
+                    }
+                });
+
+                const assetValues = monthKeysOrdered.map(k => assetCounts[k]);
+                const lostValues = monthKeysOrdered.map(k => lostCounts[k]);
+                const maintValues = monthKeysOrdered.map(k => maintCounts[k]);
+
+                const allValues = [...assetValues, ...lostValues, ...maintValues];
+                const maxCount = Math.max(...allValues, 1);
+
+                // Create gradient for assets added line
                 const canvas = document.getElementById('acquisition-chart');
                 const ctx = canvas.getContext('2d');
                 const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
+                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
                 gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
 
                 // Destroy existing chart if it exists
@@ -989,23 +1079,61 @@
                     type: 'line',
                     data: {
                         labels: months,
-                        datasets: [{
-                            label: 'Assets Added',
-                            data: counts,
-                            borderColor: '#3b82f6',
-                            backgroundColor: gradient,
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            pointBackgroundColor: '#3b82f6',
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: '#3b82f6',
-                            pointHoverBorderWidth: 2
-                        }]
+                        datasets: [
+                            {
+                                label: 'Equipment Aquisition',
+                                data: assetValues,
+                                borderColor: '#3b82f6',
+                                backgroundColor: gradient,
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                                pointBackgroundColor: '#3b82f6',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: '#3b82f6',
+                                pointHoverBorderWidth: 2
+                            },
+                            {
+                                label: 'Lost / Damaged',
+                                data: lostValues,
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                                pointBackgroundColor: '#ef4444',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: '#ef4444',
+                                pointHoverBorderWidth: 2,
+                                borderDash: [4, 2]
+                            },
+                            {
+                                label: 'Under Repair',
+                                data: maintValues,
+                                borderColor: '#eab308',
+                                backgroundColor: 'rgba(234, 179, 8, 0.08)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                                pointBackgroundColor: '#eab308',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: '#eab308',
+                                pointHoverBorderWidth: 2,
+                                borderDash: [4, 2]
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
@@ -1016,7 +1144,16 @@
                         },
                         plugins: {
                             legend: {
-                                display: false
+                                display: true,
+                                position: 'top',
+                                align: 'end',
+                                labels: {
+                                    color: '#94a3b8',
+                                    usePointStyle: true,
+                                    pointStyle: 'circle',
+                                    padding: 12,
+                                    font: { size: 11 }
+                                }
                             },
                             tooltip: {
                                 enabled: true,
@@ -1037,14 +1174,6 @@
                                 callbacks: {
                                     title: function(context) {
                                         return context[0].label;
-                                    },
-                                    label: function(context) {
-                                        const value = context.parsed.y;
-                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                        return [
-                                            `Assets Added: ${value}`,
-                                            `${percentage}% of total (${total})`
-                                        ];
                                     }
                                 }
                             }
@@ -1462,6 +1591,391 @@
                 </div>
             `).join('');
         }
+
+        // =============================================
+        // EXECUTIVE FINANCIAL SUMMARY
+        // =============================================
+        let execSlideIndex = 0;
+        let execSlideTimer = null;
+        let execSlideData = [];
+
+        /**
+         * Fetch exchange rates from open API (cached for session).
+         * Returns an object like { USD: 1, PHP: 56.2, IDR: 15800, CNY: 7.25, ... }
+         */
+        async function fetchExchangeRates() {
+            if (exchangeRatesLoaded && exchangeRates) return exchangeRates;
+            try {
+                const resp = await fetch('https://open.er-api.com/v6/latest/USD');
+                const json = await resp.json();
+                if (json.result === 'success' && json.rates) {
+                    exchangeRates = json.rates;
+                    exchangeRatesLoaded = true;
+                    return exchangeRates;
+                }
+            } catch (e) {
+                console.warn('Failed to fetch exchange rates, using fallback:', e);
+            }
+            // Fallback rates (approximate) if API fails
+            exchangeRates = { USD: 1, PHP: 56.0, IDR: 15800, CNY: 7.25 };
+            exchangeRatesLoaded = true;
+            return exchangeRates;
+        }
+
+        /**
+         * Convert an amount from a local currency to USD.
+         * @param {number} amount - Amount in local currency
+         * @param {string} currencyCode - e.g. 'PHP', 'IDR', 'CNY', 'USD'
+         * @returns {number} Amount in USD
+         */
+        function toUSD(amount, currencyCode) {
+            if (!amount || !exchangeRates) return amount || 0;
+            if (currencyCode === 'USD') return amount;
+            const rate = exchangeRates[currencyCode];
+            if (!rate) return amount;
+            return amount / rate;
+        }
+
+        /**
+         * Get the currency code for a given region_id.
+         * Falls back to 'USD' if unknown.
+         */
+        function getCurrencyForRegion(regionId) {
+            const region = regionsMap[regionId];
+            if (!region?.code) return 'USD';
+            const cfg = window.CONFIG?.REGIONS?.[region.code];
+            return cfg?.currency || 'USD';
+        }
+
+        /**
+         * Format a monetary value for the executive panel.
+         * - If "All Regions" (selectedRegionId = null): show in USD only (amounts pre-converted)
+         * - If specific region selected and region is US: show USD only
+         * - If specific region selected (non-US): show "$X (¥Y)" — USD then local
+         * @param {number} usdAmount - Amount already in USD
+         * @param {number|null} localAmount - Amount in local currency (null if All Regions)
+         * @param {string|null} localCurrency - Local currency code (null if All Regions)
+         */
+        function fmtExecCurrency(usdAmount, localAmount, localCurrency) {
+            const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(usdAmount || 0);
+            // All Regions or US region → USD only
+            if (!localCurrency || localCurrency === 'USD') return fmtUSD;
+            // Specific non-US region → USD (local)
+            const localCfg = Object.values(window.CONFIG?.REGIONS || {}).find(r => r.currency === localCurrency);
+            const locale = localCfg?.locale || 'en-US';
+            const fmtLocal = new Intl.NumberFormat(locale, { style: 'currency', currency: localCurrency }).format(localAmount || 0);
+            return `${fmtUSD} <span class="text-slate-400 text-xs">(${fmtLocal})</span>`;
+        }
+
+        /**
+         * Load executive financial summary data
+         * Only runs for executive and exec-admin roles
+         */
+        async function loadExecutiveSummary() {
+            const panel = document.getElementById('exec-summary-panel');
+            const trendCard = document.getElementById('acquisition-trends-card');
+            const bottomGrid = document.getElementById('bottom-row-grid');
+            if (!panel) return;
+
+            // Only show for executive / exec-admin
+            const isExec = currentUser.isExecAdmin || currentUser.role === 'executive';
+            if (!isExec) {
+                panel.classList.add('hidden');
+                // Restore col-span-2 on acquisition trends when panel is hidden
+                if (trendCard) trendCard.classList.add('lg:col-span-2');
+                if (bottomGrid) bottomGrid.classList.remove('exec-visible');
+                return;
+            }
+
+            panel.classList.remove('hidden');
+            if (trendCard) trendCard.classList.remove('lg:col-span-2');
+            if (bottomGrid) bottomGrid.classList.add('exec-visible');
+
+            try {
+                // Fetch exchange rates (cached after first call)
+                await fetchExchangeRates();
+
+                // Determine the local currency for the selected region
+                let localCurrency = null; // null means "All Regions" → USD only
+                if (selectedRegionId) {
+                    localCurrency = getCurrencyForRegion(selectedRegionId);
+                }
+                const isAllRegions = !selectedRegionId;
+
+                // Update currency label in panel header
+                const currLabel = document.getElementById('exec-currency-label');
+                if (currLabel) {
+                    if (isAllRegions) {
+                        currLabel.textContent = 'All amounts shown in USD';
+                    } else if (localCurrency === 'USD') {
+                        currLabel.textContent = 'All amounts shown in USD';
+                    } else {
+                        currLabel.innerHTML = `Amounts in USD <span class="text-blue-400">(${localCurrency})</span>`;
+                    }
+                }
+
+                // Fetch all financial data in parallel
+                // Include region_id on assets & licenses so we can convert per-row
+                let assetQ = supabase.from('assets').select('purchase_cost, status, region_id');
+                assetQ = applyRegionFilter(assetQ);
+
+                let maintQ = supabase.from('maintenance_records').select('cost, status, asset:assets(region_id)');
+
+                let lostQ = supabase.from('lost_assets').select('estimated_value, liability_amount, status, asset:assets(region_id)');
+
+                let licenseQ = supabase.from('software_licenses').select('cost, region_id');
+                licenseQ = applyRegionFilter(licenseQ);
+
+                const [assetsRes, maintRes, lostRes, licenseRes] = await Promise.all([
+                    assetQ, maintQ, lostQ, licenseQ
+                ]);
+
+                const assets = assetsRes.data || [];
+                // Client-side region filter for maintenance (joined through asset)
+                const maintAll = maintRes.data || [];
+                const maintenance = maintAll.filter(m => matchesRegionFilter(m.asset?.region_id));
+                // Client-side region filter for lost assets
+                const lostAll = lostRes.data || [];
+                const lostAssets = lostAll.filter(la => matchesRegionFilter(la.asset?.region_id));
+                const licenses = licenseRes.data || [];
+
+                // --- Helper: sum amounts converting each row to USD based on its region ---
+                function sumToUSD(items, costField, regionIdGetter) {
+                    return items.reduce((sum, item) => {
+                        const amount = parseFloat(item[costField]) || 0;
+                        const rid = typeof regionIdGetter === 'function' ? regionIdGetter(item) : item[regionIdGetter];
+                        const cur = getCurrencyForRegion(rid);
+                        return sum + toUSD(amount, cur);
+                    }, 0);
+                }
+
+                // --- Helper: sum amounts in local currency (when specific region selected) ---
+                function sumLocal(items, costField) {
+                    return items.reduce((sum, item) => sum + (parseFloat(item[costField]) || 0), 0);
+                }
+
+                // --- Helper: format currency for exec panel ---
+                // When All Regions: converts everything to USD and shows USD only
+                // When specific region: shows USD (local) dual format
+                function fmtExec(usdVal, localVal) {
+                    return fmtExecCurrency(usdVal, localVal, localCurrency);
+                }
+
+                // 1. Total Asset Investment
+                const totalAssetCostUSD = isAllRegions
+                    ? sumToUSD(assets, 'purchase_cost', 'region_id')
+                    : sumToUSD(assets, 'purchase_cost', 'region_id');
+                const totalAssetCostLocal = isAllRegions ? null : sumLocal(assets, 'purchase_cost');
+
+                const activeAssets = assets.filter(a => a.status !== 'decommissioned');
+                const activeAssetCostUSD = isAllRegions
+                    ? sumToUSD(activeAssets, 'purchase_cost', 'region_id')
+                    : sumToUSD(activeAssets, 'purchase_cost', 'region_id');
+                const activeAssetCostLocal = isAllRegions ? null : sumLocal(activeAssets, 'purchase_cost');
+
+                const avgAssetCostUSD = assets.length ? totalAssetCostUSD / assets.length : 0;
+                const avgAssetCostLocal = (isAllRegions || !assets.length) ? null : totalAssetCostLocal / assets.length;
+
+                // 2. Maintenance & Repairs
+                const totalMaintCostUSD = sumToUSD(maintenance, 'cost', item => item.asset?.region_id);
+                const totalMaintCostLocal = isAllRegions ? null : sumLocal(maintenance, 'cost');
+
+                const completedMaint = maintenance.filter(m => m.status === 'completed');
+                const completedMaintCostUSD = sumToUSD(completedMaint, 'cost', item => item.asset?.region_id);
+                const completedMaintCostLocal = isAllRegions ? null : sumLocal(completedMaint, 'cost');
+                const avgMaintCostUSD = completedMaint.length ? completedMaintCostUSD / completedMaint.length : 0;
+                const avgMaintCostLocal = (isAllRegions || !completedMaint.length) ? null : completedMaintCostLocal / completedMaint.length;
+
+                const activeMaints = maintenance.filter(m => m.status === 'in_progress');
+                const activeMaintCostUSD = sumToUSD(activeMaints, 'cost', item => item.asset?.region_id);
+                const activeMaintCostLocal = isAllRegions ? null : sumLocal(activeMaints, 'cost');
+
+                // 3. Lost Asset Exposure
+                const totalLostValueUSD = sumToUSD(lostAssets, 'estimated_value', item => item.asset?.region_id);
+                const totalLostValueLocal = isAllRegions ? null : sumLocal(lostAssets, 'estimated_value');
+                const totalLiabilityUSD = sumToUSD(lostAssets, 'liability_amount', item => item.asset?.region_id);
+                const totalLiabilityLocal = isAllRegions ? null : sumLocal(lostAssets, 'liability_amount');
+                const activeInvestigations = lostAssets.filter(la => la.status === 'under_investigation').length;
+
+                // 4. Software Licenses
+                const totalLicenseCostUSD = sumToUSD(licenses, 'cost', 'region_id');
+                const totalLicenseCostLocal = isAllRegions ? null : sumLocal(licenses, 'cost');
+                const avgLicenseCostUSD = licenses.length ? totalLicenseCostUSD / licenses.length : 0;
+                const avgLicenseCostLocal = (isAllRegions || !licenses.length) ? null : totalLicenseCostLocal / licenses.length;
+                const costPerAssetUSD = assets.length ? totalLicenseCostUSD / assets.length : 0;
+                const costPerAssetLocal = (isAllRegions || !assets.length) ? null : totalLicenseCostLocal / assets.length;
+
+                // 5. Cost Summary / ROI
+                const totalSpendUSD = totalAssetCostUSD + totalMaintCostUSD + totalLicenseCostUSD;
+                const totalSpendLocal = isAllRegions ? null : (totalAssetCostLocal + totalMaintCostLocal + totalLicenseCostLocal);
+                const maintToAssetRatio = totalAssetCostUSD > 0 ? ((totalMaintCostUSD / totalAssetCostUSD) * 100).toFixed(1) : '0.0';
+                const decommCount = assets.filter(a => a.status === 'decommissioned').length;
+                const netLossUSD = totalLostValueUSD - totalLiabilityUSD;
+                const netLossLocal = isAllRegions ? null : (totalLostValueLocal - totalLiabilityLocal);
+
+                // Build slides
+                execSlideData = [
+                    {
+                        title: 'Total Asset Investment',
+                        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+                        iconBg: 'bg-green-500/20 text-green-400',
+                        rows: [
+                            { label: 'Total Purchase Cost', value: fmtExec(totalAssetCostUSD, totalAssetCostLocal), highlight: true },
+                            { label: 'Active Asset Value', value: fmtExec(activeAssetCostUSD, activeAssetCostLocal) },
+                            { label: 'Average Cost per Asset', value: fmtExec(avgAssetCostUSD, avgAssetCostLocal) },
+                            { label: 'Total Assets', value: assets.length.toLocaleString() }
+                        ]
+                    },
+                    {
+                        title: 'Maintenance & Repairs',
+                        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+                        iconBg: 'bg-yellow-500/20 text-yellow-400',
+                        rows: [
+                            { label: 'Total Maintenance Spend', value: fmtExec(totalMaintCostUSD, totalMaintCostLocal), highlight: true },
+                            { label: 'Avg. Cost per Repair', value: fmtExec(avgMaintCostUSD, avgMaintCostLocal) },
+                            { label: 'Active Repair Costs', value: fmtExec(activeMaintCostUSD, activeMaintCostLocal) },
+                            { label: 'Completed Repairs', value: completedMaint.length.toLocaleString() }
+                        ]
+                    },
+                    {
+                        title: 'Lost Asset Exposure',
+                        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`,
+                        iconBg: 'bg-red-500/20 text-red-400',
+                        rows: [
+                            { label: 'Total Estimated Value Lost', value: fmtExec(totalLostValueUSD, totalLostValueLocal), highlight: true },
+                            { label: 'Total Liability', value: fmtExec(totalLiabilityUSD, totalLiabilityLocal) },
+                            { label: 'Under Investigation', value: activeInvestigations.toString() },
+                            { label: 'Total Lost Reports', value: lostAssets.length.toLocaleString() }
+                        ]
+                    },
+                    {
+                        title: 'Software Licenses',
+                        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>`,
+                        iconBg: 'bg-purple-500/20 text-purple-400',
+                        rows: [
+                            { label: 'Total License Spend', value: fmtExec(totalLicenseCostUSD, totalLicenseCostLocal), highlight: true },
+                            { label: 'Avg. Cost per License', value: fmtExec(avgLicenseCostUSD, avgLicenseCostLocal) },
+                            { label: 'Total Licenses', value: licenses.length.toLocaleString() },
+                            { label: 'Cost per Asset Ratio', value: assets.length ? fmtExec(costPerAssetUSD, costPerAssetLocal) : '-' }
+                        ]
+                    },
+                    {
+                        title: 'Total Cost Overview',
+                        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>`,
+                        iconBg: 'bg-blue-500/20 text-blue-400',
+                        rows: [
+                            { label: 'Total IT Spend', value: fmtExec(totalSpendUSD, totalSpendLocal), highlight: true },
+                            { label: 'Maintenance-to-Asset Ratio', value: maintToAssetRatio + '%' },
+                            { label: 'Decommissioned Assets', value: decommCount.toLocaleString() },
+                            { label: 'Net Loss Exposure', value: fmtExec(netLossUSD, netLossLocal) }
+                        ]
+                    }
+                ];
+
+                renderExecSlides();
+                startExecSlideTimer();
+
+            } catch (error) {
+                console.error('Error loading executive summary:', error);
+                const container = document.getElementById('exec-slides-container');
+                if (container) {
+                    container.innerHTML = `<div class="p-6 text-center text-slate-400">Unable to load financial data</div>`;
+                }
+            }
+        }
+
+        /**
+         * Render executive summary slides
+         */
+        function renderExecSlides() {
+            const container = document.getElementById('exec-slides-container');
+            const indicators = document.getElementById('exec-slide-indicators');
+            if (!container || !execSlideData.length) return;
+
+            container.innerHTML = execSlideData.map((slide, idx) => `
+                <div class="exec-slide ${idx === 0 ? 'active' : ''}" data-slide="${idx}">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="exec-metric-icon ${slide.iconBg}">
+                            ${slide.icon}
+                        </div>
+                        <h4 class="text-sm font-semibold text-white">${slide.title}</h4>
+                    </div>
+                    ${slide.rows.map(row => `
+                        <div class="exec-metric-row">
+                            <span class="exec-metric-label">${row.label}</span>
+                            <span class="${row.highlight ? 'exec-metric-value text-white' : 'text-sm font-medium text-slate-200'}" ${row.highlight ? 'style="font-size:1.1rem"' : ''}>
+                                ${row.value}
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+
+            // Render indicators
+            if (indicators) {
+                indicators.innerHTML = execSlideData.map((_, idx) =>
+                    `<span class="exec-slide-dot ${idx === 0 ? 'active' : ''}" onclick="goToExecSlide(${idx})"></span>`
+                ).join('');
+            }
+        }
+
+        /**
+         * Navigate to a specific exec slide
+         */
+        function showExecSlide(index) {
+            const slides = document.querySelectorAll('.exec-slide');
+            const dots = document.querySelectorAll('.exec-slide-dot');
+            if (!slides.length) return;
+
+            // Wrap around
+            if (index < 0) index = slides.length - 1;
+            if (index >= slides.length) index = 0;
+
+            slides.forEach((slide, i) => {
+                slide.classList.remove('active', 'exit-left');
+                if (i === execSlideIndex) slide.classList.add('exit-left');
+            });
+
+            execSlideIndex = index;
+
+            // Small delay to trigger CSS transition
+            requestAnimationFrame(() => {
+                slides[execSlideIndex].classList.remove('exit-left');
+                slides[execSlideIndex].classList.add('active');
+            });
+
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === execSlideIndex);
+            });
+        }
+
+        function startExecSlideTimer() {
+            stopExecSlideTimer();
+            execSlideTimer = setInterval(() => {
+                showExecSlide(execSlideIndex + 1);
+            }, 6000); // rotate every 6 seconds
+        }
+
+        function stopExecSlideTimer() {
+            if (execSlideTimer) {
+                clearInterval(execSlideTimer);
+                execSlideTimer = null;
+            }
+        }
+
+        // Expose nav functions globally
+        window.nextExecSlide = function() {
+            showExecSlide(execSlideIndex + 1);
+            startExecSlideTimer(); // reset timer on manual nav
+        };
+        window.prevExecSlide = function() {
+            showExecSlide(execSlideIndex - 1);
+            startExecSlideTimer();
+        };
+        window.goToExecSlide = function(idx) {
+            showExecSlide(idx);
+            startExecSlideTimer();
+        };
 
         // Global functions
         window.showAlertDetail = async function(type) {

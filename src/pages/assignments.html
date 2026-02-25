@@ -181,38 +181,57 @@
         </main>
     </div>
 
-    <!-- Assign Modal -->
+    <!-- Assign Modal (checklist-based) -->
     <div id="assign-modal" class="modal-overlay hidden">
         <div class="modal max-w-lg">
             <div class="modal-header">
-                <h3 class="modal-title">Assign Asset to Employee</h3>
+                <h3 class="modal-title">Assign Assets to Employee</h3>
                 <button onclick="closeAssignModal()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
-            <form id="assign-form" onsubmit="handleAssign(event)">
-                <div class="modal-body space-y-4">
-                    <div class="form-group">
-                        <label class="form-label" for="assign-asset">Asset *</label>
-                        <select id="assign-asset" class="form-select" required></select>
-                        <p class="text-xs text-slate-400 mt-1">Only available assets are shown</p>
+            <div class="modal-body space-y-4">
+                <!-- Employee Selector -->
+                <div class="form-group">
+                    <label class="form-label" for="am-employee-select">Employee *</label>
+                    <select id="am-employee-select" class="form-select" onchange="onAssignModalEmployeeChange()">
+                        <option value="">Select an employee...</option>
+                    </select>
+                </div>
+                <!-- Checklist section (revealed after employee is selected) -->
+                <div id="am-checklist-section" class="hidden space-y-4">
+                    <div class="flex items-center gap-3 p-3 bg-slate-800 rounded-lg border border-slate-700">
+                        <div>
+                            <p class="text-xs text-slate-400">Employee</p>
+                            <p class="font-medium text-white" id="am-employee-name"></p>
+                        </div>
                     </div>
+                    <!-- Hardware -->
                     <div class="form-group">
-                        <label class="form-label" for="assign-employee">Employee *</label>
-                        <select id="assign-employee" class="form-select" required></select>
+                        <label class="form-label flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            Hardware Assets
+                        </label>
+                        <p class="text-xs text-slate-400 mb-2">Check categories to assign available hardware to this employee</p>
+                        <div id="am-hw-container" class="space-y-1 max-h-52 overflow-y-auto p-2 bg-slate-800 rounded-lg border border-slate-700">
+                            <p class="text-slate-400 text-sm text-center py-2">Loading...</p>
+                        </div>
                     </div>
+                    <!-- Software -->
                     <div class="form-group">
-                        <label class="form-label" for="assign-date">Assignment Date</label>
-                        <input type="date" id="assign-date" class="form-input" value="">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="assign-notes">Notes</label>
-                        <textarea id="assign-notes" class="form-textarea" rows="2" placeholder="Optional notes..."></textarea>
+                        <label class="form-label flex items-center gap-2">
+                            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                            Software Licenses
+                        </label>
+                        <p class="text-xs text-slate-400 mb-2">Check products to assign available software licenses to this employee</p>
+                        <div id="am-sw-container" class="space-y-1 max-h-52 overflow-y-auto p-2 bg-slate-800 rounded-lg border border-slate-700">
+                            <p class="text-slate-400 text-sm text-center py-2">Loading...</p>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeAssignModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Assign Asset</button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAssignModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="am-save-btn" onclick="saveAssignModal()" disabled>Save Assignments</button>
+            </div>
         </div>
     </div>
 
@@ -401,9 +420,6 @@
                 }
             }
 
-            // Set today's date as default
-            document.getElementById('assign-date').value = new Date().toISOString().split('T')[0];
-
             // Check for ?employee= URL param (deep-link from Employees page)
             const urlParams = new URLSearchParams(window.location.search);
             const empParam = urlParams.get('employee');
@@ -580,6 +596,23 @@
                     if (r.category) reqCatsMap[r.employee_id].push({ id: r.category.id, name: r.category.name });
                 });
 
+                // 2b. Fetch available assets for each required category (to show stock hints)
+                const allReqCatIds = [...new Set((reqCatsData || []).map(r => r.category_id).filter(Boolean))];
+                const availableByCategory = {};
+                if (allReqCatIds.length > 0) {
+                    let availQ = supabase
+                        .from('assets')
+                        .select('id, asset_tag, name, category_id')
+                        .eq('status', 'available')
+                        .in('category_id', allReqCatIds);
+                    if (regionId) availQ = availQ.eq('region_id', regionId);
+                    const { data: availAssets } = await availQ;
+                    (availAssets || []).forEach(a => {
+                        if (!availableByCategory[a.category_id]) availableByCategory[a.category_id] = [];
+                        availableByCategory[a.category_id].push({ id: a.id, name: a.name, asset_tag: a.asset_tag });
+                    });
+                }
+
                 // 3. Get assignments with asset details (filtered by status)
                 let assignQuery = supabase
                     .from('v_asset_assignments_full')
@@ -688,11 +721,14 @@
 
                     const checklist = requiredCats.map(cat => {
                         const assigned = catAssignMap[cat.id] || [];
+                        const avail = availableByCategory[cat.id] || [];
                         return {
                             categoryName: cat.name,
                             categoryId: cat.id,
                             fulfilled: assigned.length > 0,
-                            assets: assigned
+                            assets: assigned,
+                            availableCount: avail.length,
+                            firstAvailableAssetId: avail[0]?.id || null
                         };
                     });
 
@@ -776,21 +812,38 @@
                                         </div>
                                     `).join('');
                                 } else {
+                                    const hasStock = item.availableCount > 0;
+                                    const borderCls = hasStock ? 'border-amber-500/30' : 'border-red-500/20';
+                                    const bgCls = hasStock ? 'bg-amber-500/5' : 'bg-red-500/5';
+                                    const iconCls = hasStock ? 'text-amber-400' : 'text-red-400';
+                                    const iconD = hasStock
+                                        ? 'M13 10V3L4 14h7v7l9-11h-7z'
+                                        : 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z';
+                                    const nameCls = hasStock ? 'text-amber-300' : 'text-red-300';
+                                    const statusLabel = hasStock
+                                        ? `<span class="text-xs text-amber-400 font-medium ml-2">— ${item.availableCount} available, ready to assign</span>`
+                                        : `<span class="text-slate-500 ml-2">— Not assigned <span class="text-xs text-slate-600">(no stock)</span></span>`;
+                                    const assignBtn = currentUser.role !== 'viewer'
+                                        ? (hasStock
+                                            ? `<button type="button" class="btn btn-sm shrink-0" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.4);" title="Auto-assign first available ${item.categoryName}" onclick="handleDirectAssign('${emp.id}','${item.firstAvailableAssetId}','${emp.full_name.replace(/'/g, "\\'")}','${item.categoryName.replace(/'/g, "\\'")}')">
+                                                <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                                Assign
+                                            </button>`
+                                            : `<button type="button" class="btn btn-sm btn-secondary shrink-0 opacity-50 cursor-not-allowed" disabled title="No assets available in this category">
+                                                <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                                No stock
+                                            </button>`)
+                                        : '';
                                     return `
-                                        <div class="flex items-center gap-3 py-2 px-3 rounded-lg bg-red-500/5 border border-red-500/20">
-                                            <svg class="w-5 h-5 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        <div class="flex items-center gap-3 py-2 px-3 rounded-lg ${bgCls} border ${borderCls}">
+                                            <svg class="w-5 h-5 ${iconCls} shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconD}"/>
                                             </svg>
                                             <div class="flex-1">
-                                                <span class="font-medium text-red-300">${item.categoryName}</span>
-                                                <span class="text-slate-500 ml-2">— Not assigned</span>
+                                                <span class="font-medium ${nameCls}">${item.categoryName}</span>
+                                                ${statusLabel}
                                             </div>
-                                            ${currentUser.role !== 'viewer' ? `
-                                                <button type="button" class="btn btn-sm btn-primary shrink-0" onclick="openQuickAssignModal('${emp.id}', '${emp.full_name.replace(/'/g, "\\'") }', '${item.categoryId}', '${item.categoryName.replace(/'/g, "\\'")}')">
-                                                    <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                                    Assign
-                                                </button>
-                                            ` : ''}
+                                            ${assignBtn}
                                         </div>
                                     `;
                                 }
@@ -957,21 +1010,11 @@
         }
 
         async function loadAssetOptions() {
-            let assetQ = supabase.from('assets').select('id, asset_tag, name').eq('status', 'available');
-            const regionId = currentUser.region_id || null;
-            if (regionId) assetQ = assetQ.eq('region_id', regionId);
-            const { data: assets } = await assetQ.order('name');
-            const select = document.getElementById('assign-asset');
-            select.innerHTML = '<option value="">Select an asset</option>' + (assets || []).map(a => `<option value="${a.id}">${a.name} (${a.asset_tag})</option>`).join('');
+            // kept for compatibility with other parts of the page
         }
 
         async function loadEmployeeOptions() {
-            let empQ = supabase.from('employees').select('id, full_name, employee_id').eq('is_active', true);
-            const regionId = currentUser.region_id || null;
-            if (regionId) empQ = empQ.eq('region_id', regionId);
-            const { data: employees } = await empQ.order('full_name');
-            const select = document.getElementById('assign-employee');
-            select.innerHTML = '<option value="">Select an employee</option>' + (employees || []).map(e => `<option value="${e.id}">${e.full_name} (${e.employee_id})</option>`).join('');
+            // kept for compatibility with other parts of the page
         }
 
         async function loadDepartments() {
@@ -983,8 +1026,374 @@
         window.toggleSidebar = () => { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-overlay').classList.toggle('hidden'); };
         window.handleLogout = () => Utils.confirmLogout(supabase);
 
-        window.openAssignModal = () => { document.getElementById('assign-form').reset(); document.getElementById('assign-date').value = new Date().toISOString().split('T')[0]; loadAssetOptions(); document.getElementById('assign-modal').classList.remove('hidden'); };
-        window.closeAssignModal = () => document.getElementById('assign-modal').classList.add('hidden');
+        // ===========================================
+        // ASSIGN MODAL (checklist-based)
+        // ===========================================
+        let amEmployeeId = null;
+        let amHwAssignmentMap = {};   // categoryId → [{ assignment_id, asset_tag, asset_name }]
+        let amInitialHWChecked = new Set();
+        let amSwAssignmentMap = {};   // swCategoryId → [{ license_assignment_id, license_name, license_id }]
+        let amInitialSWChecked = new Set();
+
+        window.openAssignModal = async () => {
+            amEmployeeId = null;
+            amHwAssignmentMap = {};
+            amInitialHWChecked = new Set();
+            amSwAssignmentMap = {};
+            amInitialSWChecked = new Set();
+
+            document.getElementById('am-checklist-section').classList.add('hidden');
+            document.getElementById('am-save-btn').disabled = true;
+
+            // Populate employee dropdown
+            const select = document.getElementById('am-employee-select');
+            select.innerHTML = '<option value="">Loading employees...</option>';
+            const regionId = currentUser.region_id || null;
+            let empQ = supabase.from('employees').select('id, full_name, employee_id').eq('is_active', true);
+            if (regionId) empQ = empQ.eq('region_id', regionId);
+            const { data: employees } = await empQ.order('full_name');
+            select.innerHTML = '<option value="">Select an employee...</option>' +
+                (employees || []).map(e => `<option value="${e.id}" data-name="${e.full_name}">${e.full_name}${e.employee_id ? ' (' + e.employee_id + ')' : ''}</option>`).join('');
+
+            document.getElementById('assign-modal').classList.remove('hidden');
+        };
+
+        window.closeAssignModal = () => {
+            document.getElementById('assign-modal').classList.add('hidden');
+            amEmployeeId = null;
+            amHwAssignmentMap = {};
+            amInitialHWChecked = new Set();
+            amSwAssignmentMap = {};
+            amInitialSWChecked = new Set();
+        };
+
+        window.onAssignModalEmployeeChange = async () => {
+            const select = document.getElementById('am-employee-select');
+            const employeeId = select.value;
+            const employeeName = select.options[select.selectedIndex]?.dataset.name || '';
+
+            if (!employeeId) {
+                document.getElementById('am-checklist-section').classList.add('hidden');
+                document.getElementById('am-save-btn').disabled = true;
+                amEmployeeId = null;
+                return;
+            }
+
+            amEmployeeId = employeeId;
+            amHwAssignmentMap = {};
+            amInitialHWChecked = new Set();
+            amSwAssignmentMap = {};
+            amInitialSWChecked = new Set();
+
+            document.getElementById('am-employee-name').textContent = employeeName;
+            document.getElementById('am-checklist-section').classList.remove('hidden');
+            document.getElementById('am-save-btn').disabled = false;
+
+            const hwContainer = document.getElementById('am-hw-container');
+            const swContainer = document.getElementById('am-sw-container');
+            hwContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-2">Loading categories...</p>';
+            swContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-2">Loading categories...</p>';
+
+            const regionId = currentUser.region_id || null;
+
+            try {
+                // ========== HARDWARE SECTION ==========
+                const { data: hwCats } = await supabase
+                    .from('asset_categories')
+                    .select('id, name')
+                    .eq('is_active', true)
+                    .order('name');
+
+                let assetQ = supabase.from('assets').select('id, category_id, name, asset_tag').eq('status', 'available').order('name');
+                if (regionId) assetQ = assetQ.eq('region_id', regionId);
+                const { data: availableAssets } = await assetQ;
+                const availableByCategory = {};
+                (availableAssets || []).forEach(a => {
+                    if (!availableByCategory[a.category_id]) availableByCategory[a.category_id] = [];
+                    availableByCategory[a.category_id].push({ id: a.id, name: a.name, asset_tag: a.asset_tag });
+                });
+
+                const { data: activeAssignments } = await supabase
+                    .from('asset_assignments')
+                    .select('id, asset:assets(id, asset_tag, name, serial_number, category_id)')
+                    .eq('employee_id', employeeId)
+                    .is('returned_date', null);
+                (activeAssignments || []).forEach(a => {
+                    if (a.asset?.category_id) {
+                        if (!amHwAssignmentMap[a.asset.category_id]) amHwAssignmentMap[a.asset.category_id] = [];
+                        amHwAssignmentMap[a.asset.category_id].push({
+                            assignment_id: a.id,
+                            asset_tag: a.asset.asset_tag,
+                            asset_name: a.asset.name || a.asset.serial_number
+                        });
+                        amInitialHWChecked.add(a.asset.category_id);
+                    }
+                });
+
+                if (!hwCats || hwCats.length === 0) {
+                    hwContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-2">No hardware categories available</p>';
+                } else {
+                    const sortedHWCats = [...hwCats].sort((a, b) => {
+                        const aAssigned = (amHwAssignmentMap[a.id] || []).length > 0;
+                        const bAssigned = (amHwAssignmentMap[b.id] || []).length > 0;
+                        const aAvail = (availableByCategory[a.id] || []).length > 0;
+                        const bAvail = (availableByCategory[b.id] || []).length > 0;
+                        const aOrder = aAssigned ? 0 : aAvail ? 1 : 2;
+                        const bOrder = bAssigned ? 0 : bAvail ? 1 : 2;
+                        if (aOrder !== bOrder) return aOrder - bOrder;
+                        return a.name.localeCompare(b.name);
+                    });
+
+                    hwContainer.innerHTML = sortedHWCats.map(c => {
+                        const assignments = amHwAssignmentMap[c.id] || [];
+                        const isAssigned = assignments.length > 0;
+                        const availableList = availableByCategory[c.id] || [];
+                        const availableCount = availableList.length;
+                        const isUnavailable = !isAssigned && availableCount === 0;
+
+                        let statusHtml = '';
+                        if (isAssigned) {
+                            const assetInfo = assignments.map(a => a.asset_tag || a.asset_name).join(', ');
+                            statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[200px]" title="${assetInfo}">\u2713 ${assetInfo}</span>`;
+                        } else if (availableCount > 0) {
+                            const first = availableList[0];
+                            statusHtml = `<span class="text-xs text-blue-400 truncate max-w-[200px]">${first.name}${first.asset_tag ? ' (' + first.asset_tag + ')' : ''}${availableCount > 1 ? ' +' + (availableCount - 1) + ' more' : ''}</span>`;
+                        } else {
+                            statusHtml = `<span class="text-xs text-red-400">\u2717 None available</span>`;
+                        }
+
+                        return `
+                            <div class="flex items-center justify-between p-1.5 rounded ${isUnavailable ? 'opacity-50' : 'hover:bg-slate-700'}">
+                                <label class="flex items-center gap-2 ${isUnavailable ? 'cursor-not-allowed' : 'cursor-pointer'} text-sm flex-shrink-0">
+                                    <input type="checkbox" class="am-hw-cb rounded border-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                                        value="${c.id}"
+                                        data-name="${c.name}"
+                                        ${isAssigned ? 'checked' : ''}
+                                        ${isUnavailable ? 'disabled' : ''}>
+                                    <span class="text-slate-300">${c.name}</span>
+                                </label>
+                                ${statusHtml}
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                // ========== SOFTWARE SECTION ==========
+                const { data: swCats } = await supabase
+                    .from('software_categories')
+                    .select('id, name')
+                    .eq('is_active', true)
+                    .order('name');
+
+                let licQ = supabase.from('software_licenses').select('id, name, seats, category_id, vendor').not('category_id', 'is', null);
+                if (regionId) licQ = licQ.eq('region_id', regionId);
+                const { data: allLicenses } = await licQ;
+
+                const { data: allLicenseAssignments } = await supabase.from('license_assignments').select('license_id');
+                const usedSeatsMap = {};
+                (allLicenseAssignments || []).forEach(la => {
+                    usedSeatsMap[la.license_id] = (usedSeatsMap[la.license_id] || 0) + 1;
+                });
+                const availableBySWCategory = {};
+                const availableSWByCategory = {};
+                (allLicenses || []).forEach(lic => {
+                    const avail = lic.seats - (usedSeatsMap[lic.id] || 0);
+                    if (avail > 0) {
+                        availableBySWCategory[lic.category_id] = (availableBySWCategory[lic.category_id] || 0) + avail;
+                        if (!availableSWByCategory[lic.category_id]) availableSWByCategory[lic.category_id] = [];
+                        availableSWByCategory[lic.category_id].push({ name: lic.name, vendor: lic.vendor, seats: avail });
+                    }
+                });
+
+                const { data: directLicAssignments } = await supabase
+                    .from('license_assignments')
+                    .select('id, license_id, employee_id, license:software_licenses(id, name, category_id)')
+                    .eq('employee_id', employeeId);
+                (directLicAssignments || []).forEach(la => {
+                    if (la.license?.category_id) {
+                        if (!amSwAssignmentMap[la.license.category_id]) amSwAssignmentMap[la.license.category_id] = [];
+                        amSwAssignmentMap[la.license.category_id].push({
+                            license_assignment_id: la.id,
+                            license_name: la.license.name,
+                            license_id: la.license_id
+                        });
+                        amInitialSWChecked.add(la.license.category_id);
+                    }
+                });
+
+                // Legacy asset-linked assignments
+                const empAssetIds = (activeAssignments || []).filter(a => a.asset?.id).map(a => a.asset.id);
+                if (empAssetIds.length > 0) {
+                    const { data: legacyLic } = await supabase
+                        .from('license_assignments')
+                        .select('id, license_id, license:software_licenses(id, name, category_id)')
+                        .in('asset_id', empAssetIds)
+                        .is('employee_id', null);
+                    (legacyLic || []).forEach(la => {
+                        if (la.license?.category_id) {
+                            const existing = amSwAssignmentMap[la.license.category_id] || [];
+                            if (existing.some(e => e.license_id === la.license_id)) return;
+                            if (!amSwAssignmentMap[la.license.category_id]) amSwAssignmentMap[la.license.category_id] = [];
+                            amSwAssignmentMap[la.license.category_id].push({
+                                license_assignment_id: la.id,
+                                license_name: la.license.name,
+                                license_id: la.license_id
+                            });
+                            amInitialSWChecked.add(la.license.category_id);
+                        }
+                    });
+                }
+
+                if (!swCats || swCats.length === 0) {
+                    swContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-2">No software products available</p>';
+                } else {
+                    const sortedSWCats = [...swCats].sort((a, b) => {
+                        const aAssigned = (amSwAssignmentMap[a.id] || []).length > 0;
+                        const bAssigned = (amSwAssignmentMap[b.id] || []).length > 0;
+                        const aAvail = (availableBySWCategory[a.id] || 0) > 0;
+                        const bAvail = (availableBySWCategory[b.id] || 0) > 0;
+                        const aOrder = aAssigned ? 0 : aAvail ? 1 : 2;
+                        const bOrder = bAssigned ? 0 : bAvail ? 1 : 2;
+                        if (aOrder !== bOrder) return aOrder - bOrder;
+                        return a.name.localeCompare(b.name);
+                    });
+
+                    swContainer.innerHTML = sortedSWCats.map(c => {
+                        const assignments = amSwAssignmentMap[c.id] || [];
+                        const isAssigned = assignments.length > 0;
+                        const availableCount = availableBySWCategory[c.id] || 0;
+                        const isUnavailable = !isAssigned && availableCount === 0;
+
+                        let statusHtml = '';
+                        if (isAssigned) {
+                            const licInfo = assignments.map(a => a.license_name).join(', ');
+                            statusHtml = `<span class="text-xs text-emerald-400 truncate max-w-[200px]" title="${licInfo}">\u2713 ${licInfo}</span>`;
+                        } else if (availableCount > 0) {
+                            const swList = availableSWByCategory[c.id] || [];
+                            statusHtml = `<span class="text-xs text-blue-400 truncate max-w-[200px]">${swList[0].name}${swList.length > 1 ? ' +' + (swList.length - 1) + ' more' : ''}</span>`;
+                        } else {
+                            statusHtml = `<span class="text-xs text-red-400">\u2717 No licenses available</span>`;
+                        }
+
+                        return `
+                            <div class="flex items-center justify-between p-1.5 rounded ${isUnavailable ? 'opacity-50' : 'hover:bg-slate-700'}">
+                                <label class="flex items-center gap-2 ${isUnavailable ? 'cursor-not-allowed' : 'cursor-pointer'} text-sm flex-shrink-0">
+                                    <input type="checkbox" class="am-sw-cb rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
+                                        value="${c.id}"
+                                        data-name="${c.name}"
+                                        ${isAssigned ? 'checked' : ''}
+                                        ${isUnavailable ? 'disabled' : ''}>
+                                    <span class="text-slate-300">${c.name}</span>
+                                </label>
+                                ${statusHtml}
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (err) {
+                console.error('Error loading assign modal categories:', err);
+                hwContainer.innerHTML = '<p class="text-red-400 text-sm text-center py-2">Failed to load categories</p>';
+                swContainer.innerHTML = '<p class="text-red-400 text-sm text-center py-2">Failed to load categories</p>';
+            }
+        };
+
+        window.saveAssignModal = async () => {
+            if (!amEmployeeId) return;
+            const saveBtn = document.getElementById('am-save-btn');
+            const originalText = saveBtn.textContent;
+
+            try {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+
+                const regionId = currentUser.region_id || null;
+                const Licenses = window.Licenses;
+                const messages = { assigned: [], returned: [], noStock: [], errors: [] };
+
+                // ===== HARDWARE: assign newly checked, return newly unchecked =====
+                const currentHWChecked = new Set(
+                    Array.from(document.querySelectorAll('.am-hw-cb:checked')).map(cb => cb.value)
+                );
+
+                for (const catId of currentHWChecked) {
+                    if (amInitialHWChecked.has(catId)) continue;
+                    const catName = document.querySelector(`.am-hw-cb[value="${catId}"]`)?.dataset.name || 'Unknown';
+                    let assetQuery = supabase.from('assets').select('id, asset_tag, name').eq('category_id', catId).eq('status', 'available').limit(1);
+                    if (regionId) assetQuery = assetQuery.eq('region_id', regionId);
+                    const { data: availAssets } = await assetQuery;
+                    if (availAssets && availAssets.length > 0) {
+                        const asset = availAssets[0];
+                        const result = await Assignments.assign({ assetId: asset.id, employeeId: amEmployeeId, notes: 'Assigned via Assign Assets modal', assignedBy: currentUser.id });
+                        if (result.success) messages.assigned.push(`${catName} (${asset.asset_tag || asset.name})`);
+                        else messages.errors.push(`${catName}: ${result.error}`);
+                    } else {
+                        messages.noStock.push(catName);
+                    }
+                }
+
+                for (const catId of amInitialHWChecked) {
+                    if (currentHWChecked.has(catId)) continue;
+                    const assignments = amHwAssignmentMap[catId] || [];
+                    const catName = document.querySelector(`.am-hw-cb[value="${catId}"]`)?.dataset.name || 'Unknown';
+                    for (const assignment of assignments) {
+                        const result = await Assignments.unassign(assignment.assignment_id, 'Returned via Assign Assets modal');
+                        if (result.success) messages.returned.push(`${catName} (${assignment.asset_tag})`);
+                        else messages.errors.push(`Return ${catName}: ${result.error}`);
+                    }
+                }
+
+                // ===== SOFTWARE: assign newly checked, remove newly unchecked =====
+                const currentSWChecked = new Set(
+                    Array.from(document.querySelectorAll('.am-sw-cb:checked')).map(cb => cb.value)
+                );
+
+                for (const swCatId of currentSWChecked) {
+                    if (amInitialSWChecked.has(swCatId)) continue;
+                    const catName = document.querySelector(`.am-sw-cb[value="${swCatId}"]`)?.dataset.name || 'Unknown';
+                    let licQuery = supabase.from('software_licenses').select('id, name, seats').eq('category_id', swCatId);
+                    if (regionId) licQuery = licQuery.eq('region_id', regionId);
+                    const { data: licenses } = await licQuery;
+                    let assignedLicense = null;
+                    for (const lic of (licenses || [])) {
+                        const usedSeats = await Licenses.getUsedSeats(lic.id);
+                        if (usedSeats < lic.seats) {
+                            const assignResult = await Licenses.assignToEmployee(lic.id, amEmployeeId, 'Assigned via Assign Assets modal');
+                            if (assignResult.success) { assignedLicense = lic; messages.assigned.push(`${catName} (${lic.name})`); break; }
+                        }
+                    }
+                    if (!assignedLicense) messages.noStock.push(catName);
+                }
+
+                for (const swCatId of amInitialSWChecked) {
+                    if (currentSWChecked.has(swCatId)) continue;
+                    const assignments = amSwAssignmentMap[swCatId] || [];
+                    const catName = document.querySelector(`.am-sw-cb[value="${swCatId}"]`)?.dataset.name || 'Unknown';
+                    for (const assignment of assignments) {
+                        const result = await Licenses.removeFromAsset(assignment.license_assignment_id);
+                        if (result.success) messages.returned.push(`${catName} (${assignment.license_name})`);
+                        else messages.errors.push(`Remove ${catName}: ${result.error}`);
+                    }
+                }
+
+                closeAssignModal();
+
+                if (messages.assigned.length) showToast('Assigned: ' + messages.assigned.join(', '), 'success');
+                if (messages.returned.length) setTimeout(() => showToast('Returned: ' + messages.returned.join(', '), 'info'), 300);
+                if (messages.noStock.length) setTimeout(() => showToast('No stock: ' + messages.noStock.join(', '), 'warning'), 600);
+                if (messages.errors.length) setTimeout(() => showToast('Errors: ' + messages.errors.join(', '), 'error'), 900);
+                if (!messages.assigned.length && !messages.returned.length && !messages.noStock.length && !messages.errors.length) {
+                    showToast('No changes made', 'info');
+                }
+
+                await loadRequirementsView();
+                await loadStats();
+            } catch (err) {
+                console.error('Error saving assignments:', err);
+                showToast('Failed to save: ' + (err.message || err), 'error');
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
+            }
+        };
 
         // ==============================
         // QUICK ASSIGN (from Requirements checklist)
@@ -1027,6 +1436,35 @@
 
         window.closeQuickAssignModal = () => document.getElementById('quick-assign-modal').classList.add('hidden');
 
+        // ==============================
+        // DIRECT ASSIGN (one-click from Requirements checklist when stock exists)
+        // ==============================
+        window.handleDirectAssign = async (employeeId, assetId, employeeName, categoryName) => {
+            if (!assetId) {
+                showToast('No available asset found', 'error');
+                return;
+            }
+            // Find and temporarily disable all matching buttons to prevent double-clicks
+            const buttons = document.querySelectorAll(`[onclick*="handleDirectAssign('${employeeId}'"]`);
+            buttons.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+            try {
+                const result = await Assignments.assign({
+                    assetId,
+                    employeeId,
+                    notes: 'Quick-assigned from requirements view',
+                    assignedBy: currentUser.id
+                });
+                if (!result.success) throw new Error(result.error);
+                showToast(`${categoryName} assigned to ${employeeName}`, 'success');
+                loadStats();
+                await loadRequirementsView();
+                loadAssetOptions();
+            } catch (err) {
+                showToast(err.message || 'Failed to assign asset', 'error');
+                buttons.forEach(b => { b.disabled = false; b.style.opacity = ''; });
+            }
+        };
+
         window.handleQuickAssign = async (e) => {
             e.preventDefault();
             const assetId = document.getElementById('qa-asset').value;
@@ -1053,41 +1491,6 @@
                     showToast('Asset assigned successfully', 'success');
                     closeQuickAssignModal();
                     loadStats();
-                    await loadRequirementsView();
-                    loadAssetOptions();
-                }, 'Assigning...');
-            } catch (error) {
-                showToast(error.message || 'Failed to assign asset', 'error');
-            }
-        };
-
-        window.handleAssign = async (e) => {
-            e.preventDefault();
-            const assetId = document.getElementById('assign-asset').value;
-            const employeeId = document.getElementById('assign-employee').value;
-            const assignedDate = document.getElementById('assign-date').value || new Date().toISOString().split('T')[0];
-            const notes = document.getElementById('assign-notes').value;
-
-            // Get submit button
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            
-            try {
-                // Handle form submission with loading state
-                await Utils.handleFormSubmit(submitBtn, async () => {
-                    // Use Assignments module (includes audit logging)
-                    const result = await Assignments.assign({
-                        assetId,
-                        employeeId,
-                        notes,
-                        assignedBy: currentUser.id
-                    });
-                    
-                    if (!result.success) throw new Error(result.error);
-
-                    showToast('Asset assigned successfully', 'success');
-                    closeAssignModal();
-                    loadStats();
-                    // Refresh the view
                     await loadRequirementsView();
                     loadAssetOptions();
                 }, 'Assigning...');

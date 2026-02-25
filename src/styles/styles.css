@@ -1490,3 +1490,92 @@ body {
     min-width: 80px;
     gap: 0.15rem;
 }
+
+/* =============================================
+   EXECUTIVE FINANCIAL CAROUSEL
+   ============================================= */
+.exec-carousel {
+    position: relative;
+    overflow: hidden;
+    min-height: 260px;
+}
+
+.exec-slide {
+    position: absolute;
+    inset: 0;
+    padding: 1.25rem 1.5rem;
+    opacity: 0;
+    transform: translateX(30px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    pointer-events: none;
+}
+
+.exec-slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+    position: relative;
+}
+
+.exec-slide.exit-left {
+    opacity: 0;
+    transform: translateX(-30px);
+}
+
+.exec-metric-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.exec-metric-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 0.125rem;
+}
+
+.exec-metric-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.exec-metric-row:last-child {
+    border-bottom: none;
+}
+
+.exec-metric-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.exec-slide-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #475569;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.exec-slide-dot.active {
+    background: #3b82f6;
+    width: 18px;
+    border-radius: 3px;
+}
+
+/* Bottom row: 30% / 40% / 30% when exec panel visible */
+@media (min-width: 1024px) {
+    #bottom-row-grid.exec-visible {
+        grid-template-columns: 27% 43% 27%;
+        gap: 0;
+        column-gap: 1.5rem;
+    }
+}
