@@ -716,6 +716,12 @@
                     if (regionsError) throw regionsError;
                 }
 
+                // Set password_link_sent_at so the set-password page can enforce expiry
+                await supabase
+                    .from('user_profiles')
+                    .update({ password_link_sent_at: new Date().toISOString(), password_set_at: null })
+                    .eq('id', newUserId);
+
                 // Audit log
                 await Audit.log({
                     action: 'CREATE',
@@ -726,7 +732,7 @@
                     newValues: { email, full_name: fullName, roles: selectedRoles, regions: selectedRegions }
                 });
 
-                showToast(`User created! A confirmation email has been sent to ${email}. They will set their password when they confirm.`, 'success');
+                showToast(`User created! A confirmation email has been sent to ${email}. The link is valid for 3 minutes.`, 'success');
                 closeInviteModal();
                 await loadUsers();
 
@@ -833,9 +839,15 @@
 
                 if (error) throw error;
 
+                // Update password_link_sent_at and clear password_set_at so the link is valid again
+                await supabase
+                    .from('user_profiles')
+                    .update({ password_link_sent_at: new Date().toISOString(), password_set_at: null })
+                    .eq('id', userId);
+
                 // Show success result
                 resultEl.className = 'mt-2 text-xs px-3 py-2 rounded-lg bg-green-500/20 border border-green-500/50 text-green-400';
-                resultEl.textContent = `Password reset email sent to ${userEmail}`;
+                resultEl.textContent = `Password reset email sent to ${userEmail}. The link is valid for 3 minutes.`;
                 resultEl.classList.remove('hidden');
 
                 // Audit log
@@ -848,7 +860,7 @@
                     newValues: { action: 'password_reset_sent', email: userEmail }
                 });
 
-                showToast(`Password reset email sent to ${userEmail}`, 'success');
+                showToast(`Password reset email sent to ${userEmail}. The link is valid for 3 minutes.`, 'success');
 
             } catch (error) {
                 console.error('Reset password error:', error);

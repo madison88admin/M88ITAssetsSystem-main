@@ -1446,6 +1446,20 @@
         }
 
         /**
+         * Check if the current user can navigate alert links.
+         * Executive-admin users can only click when viewing their assigned region.
+         * Admin/IT staff always can (they only see their own region).
+         */
+        function canNavigateAlerts() {
+            if (currentUser.isExecAdmin) {
+                // Only allow clicks when the selected region matches their assigned region
+                return selectedRegionId === currentUser.region_id;
+            }
+            // Non-exec-admin users (admin, it_staff, etc.) always have access
+            return true;
+        }
+
+        /**
          * Load alerts (warranty expiring, refresh due, etc.)
          */
         async function loadAlerts() {
@@ -1568,8 +1582,20 @@
                 error: 'text-red-400 bg-red-500/20'
             };
 
-            container.innerHTML = alerts.map(alert => `
-                <div class="p-4 hover:bg-slate-700/50 ${alert.link ? 'cursor-pointer' : ''}" ${alert.onclick ? `onclick="${alert.onclick}"` : alert.link ? `onclick="window.location.href='${alert.link}'"` : ''}>
+            // Executive-admin can only click alert links when viewing their own assigned region
+            const canNav = canNavigateAlerts();
+
+            container.innerHTML = alerts.map(alert => {
+                const hasAction = alert.link || alert.onclick;
+                const clickable = hasAction && canNav;
+                const clickAttr = clickable
+                    ? (alert.onclick ? `onclick="${alert.onclick}"` : `onclick="window.location.href='${alert.link}'"`) 
+                    : '';
+                const cursorClass = clickable ? 'cursor-pointer' : '';
+                const tooltip = (!canNav && hasAction) ? `title="Switch to your assigned region to access this"` : '';
+
+                return `
+                <div class="p-4 hover:bg-slate-700/50 ${cursorClass}" ${clickAttr} ${tooltip}>
                     <div class="flex items-start gap-3">
                         <div class="w-8 h-8 rounded-full ${alertColors[alert.type]} flex items-center justify-center flex-shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1580,7 +1606,7 @@
                             <p class="text-sm font-medium text-white">${alert.title}</p>
                             <p class="text-xs text-slate-400 mt-1">${alert.message}</p>
                         </div>
-                        ${alert.link || alert.onclick ? `
+                        ${clickable ? `
                         <div>
                             <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -1589,7 +1615,8 @@
                         ` : ''}
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // =============================================

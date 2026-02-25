@@ -127,6 +127,7 @@
                                 <option value="expiring">Expiring Soon</option>
                                 <option value="expired">Expired</option>
                                 <option value="perpetual">Perpetual</option>
+                                <option value="inactive">Inactive</option>
                             </select>
                             <input type="text" class="form-input text-sm" style="width:auto;min-width:160px" placeholder="Search..." oninput="handleSearch(this.value)">
                         </div>
@@ -307,20 +308,20 @@
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div id="delete-modal" class="modal-overlay hidden">
+    <!-- Deactivate / Reactivate Confirmation Modal -->
+    <div id="deactivate-modal" class="modal-overlay hidden">
         <div class="modal max-w-sm">
             <div class="modal-header">
-                <h3 class="modal-title text-red-400">Confirm Delete</h3>
-                <button onclick="closeDeleteModal()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <h3 class="modal-title" id="deactivate-modal-title">Confirm Deactivate</h3>
+                <button onclick="closeDeactivateModal()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="modal-body">
-                <p class="text-slate-300 text-sm">Are you sure you want to delete <strong id="delete-license-name" class="text-white"></strong>?</p>
-                <p class="text-xs text-slate-400 mt-2">This action cannot be undone. Licenses with active assignments cannot be deleted.</p>
+                <p class="text-slate-300 text-sm" id="deactivate-modal-message">Are you sure you want to deactivate <strong id="deactivate-license-name" class="text-white"></strong>?</p>
+                <p class="text-xs text-slate-400 mt-2" id="deactivate-modal-hint">Deactivated licenses remain in the system but are hidden from the default view.</p>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
-                <button class="btn btn-sm" style="background-color: #ef4444; color: white;" onclick="confirmDelete()" id="confirm-delete-btn">Delete</button>
+                <button class="btn btn-secondary" onclick="closeDeactivateModal()">Cancel</button>
+                <button class="btn btn-sm btn-primary" onclick="confirmToggleActive()" id="confirm-toggle-btn">Deactivate</button>
             </div>
         </div>
     </div>
@@ -338,7 +339,7 @@
         const pageSize = 10;
         let seatUsageMap = {}; // licenseId -> usedSeats
         let detailLicenseId = null;
-        let deleteLicenseData = null;
+        let toggleLicenseData = null;
 
         async function init() {
             const { data: { session } } = await supabase.auth.getSession();
@@ -461,14 +462,19 @@
             // Status filter
             const today = new Date().toISOString().split('T')[0];
             const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            if (filterStatus === 'active') {
-                query = query.or(`expiry_date.is.null,expiry_date.gt.${thirtyDays}`);
-            } else if (filterStatus === 'expiring') {
-                query = query.gte('expiry_date', today).lte('expiry_date', thirtyDays);
-            } else if (filterStatus === 'expired') {
-                query = query.lt('expiry_date', today);
-            } else if (filterStatus === 'perpetual') {
-                query = query.is('expiry_date', null);
+            if (filterStatus === 'inactive') {
+                query = query.eq('is_active', false);
+            } else {
+                query = query.eq('is_active', true);
+                if (filterStatus === 'active') {
+                    query = query.or(`expiry_date.is.null,expiry_date.gt.${thirtyDays}`);
+                } else if (filterStatus === 'expiring') {
+                    query = query.gte('expiry_date', today).lte('expiry_date', thirtyDays);
+                } else if (filterStatus === 'expired') {
+                    query = query.lt('expiry_date', today);
+                } else if (filterStatus === 'perpetual') {
+                    query = query.is('expiry_date', null);
+                }
             }
 
             const from = (currentPage - 1) * pageSize;
@@ -504,7 +510,9 @@
             });
 
             const todayDate = new Date();
-            const getStatus = (expiry) => {
+            const getStatus = (l) => {
+                if (!l.is_active) return { label: 'Inactive', class: 'badge-secondary' };
+                const expiry = l.expiry_date;
                 if (!expiry) return { label: 'Perpetual', class: 'badge-info' };
                 const exp = new Date(expiry);
                 if (exp < todayDate) return { label: 'Expired', class: 'badge-danger' };
@@ -513,12 +521,13 @@
             };
 
             tbody.innerHTML = licenses.map(l => {
-                const status = getStatus(l.expiry_date);
+                const status = getStatus(l);
                 const used = seatUsageMap[l.id] || 0;
                 const total = l.seats || 1;
                 const seatClass = used >= total ? 'text-red-400' : used > 0 ? 'text-yellow-400' : 'text-slate-400';
+                const rowClass = !l.is_active ? 'opacity-50' : '';
                 return `
-                    <tr>
+                    <tr class="${rowClass}">
                         <td>
                             <p class="font-medium text-white">${l.name}</p>
                             <p class="text-xs text-slate-400">${l.vendor || ''}</p>
@@ -538,9 +547,14 @@
                                 <button class="btn btn-sm btn-secondary" onclick="editLicense('${l.id}')" title="Edit">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                 </button>
-                                <button class="btn btn-sm" style="color:#ef4444;" onclick="promptDelete('${l.id}')" title="Delete">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                </button>
+                                ${l.is_active
+                                    ? `<button class="btn btn-sm" style="color:#f59e0b;" onclick="promptToggleActive('${l.id}', true)" title="Deactivate">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                       </button>`
+                                    : `<button class="btn btn-sm" style="color:#22c55e;" onclick="promptToggleActive('${l.id}', false)" title="Reactivate">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                       </button>`
+                                }
                                 ` : ''}
                             </div>
                         </td>
@@ -576,7 +590,9 @@
             if (!license) return;
 
             const todayDate = new Date();
-            const getStatus = (expiry) => {
+            const getStatus = (l) => {
+                if (!l.is_active) return { label: 'Inactive', class: 'text-slate-400' };
+                const expiry = l.expiry_date;
                 if (!expiry) return { label: 'Perpetual', class: 'text-blue-400' };
                 const exp = new Date(expiry);
                 if (exp < todayDate) return { label: 'Expired', class: 'text-red-400' };
@@ -584,7 +600,7 @@
                 return { label: 'Active', class: 'text-green-400' };
             };
 
-            const status = getStatus(license.expiry_date);
+            const status = getStatus(license);
             const used = seatUsageMap[id] || 0;
             const total = license.seats || 1;
 
@@ -770,46 +786,67 @@
             loadLicenses();
         }
 
-        // === Delete License ===
+        // === Deactivate / Reactivate License ===
 
-        async function promptDelete(id) {
+        async function promptToggleActive(id, isCurrentlyActive) {
             const { data: license } = await supabase.from('software_licenses').select('*').eq('id', id).single();
             if (!license) return;
-            deleteLicenseData = license;
-            document.getElementById('delete-license-name').textContent = license.name;
-            document.getElementById('delete-modal').classList.remove('hidden');
+            toggleLicenseData = license;
+
+            const modal = document.getElementById('deactivate-modal');
+            const title = document.getElementById('deactivate-modal-title');
+            const message = document.getElementById('deactivate-modal-message');
+            const hint = document.getElementById('deactivate-modal-hint');
+            const btn = document.getElementById('confirm-toggle-btn');
+
+            if (isCurrentlyActive) {
+                title.textContent = 'Confirm Deactivate';
+                title.className = 'modal-title text-yellow-400';
+                message.innerHTML = `Are you sure you want to deactivate <strong class="text-white">${license.name}</strong>?`;
+                hint.textContent = 'Deactivated licenses remain in the system but are hidden from the default view.';
+                btn.textContent = 'Deactivate';
+                btn.style.backgroundColor = '#f59e0b';
+                btn.style.color = 'white';
+                btn.className = 'btn btn-sm';
+            } else {
+                title.textContent = 'Confirm Reactivate';
+                title.className = 'modal-title text-green-400';
+                message.innerHTML = `Are you sure you want to reactivate <strong class="text-white">${license.name}</strong>?`;
+                hint.textContent = 'The license will become active and visible in the default view again.';
+                btn.textContent = 'Reactivate';
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+                btn.className = 'btn btn-sm btn-primary';
+            }
+
+            modal.classList.remove('hidden');
         }
 
-        async function confirmDelete() {
-            if (!deleteLicenseData) return;
-            const btn = document.getElementById('confirm-delete-btn');
+        async function confirmToggleActive() {
+            if (!toggleLicenseData) return;
+            const btn = document.getElementById('confirm-toggle-btn');
+            const newActive = !toggleLicenseData.is_active;
             btn.disabled = true;
-            btn.textContent = 'Deleting...';
+            btn.textContent = newActive ? 'Reactivating...' : 'Deactivating...';
 
             try {
-                const { count } = await supabase
-                    .from('license_assignments')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('license_id', deleteLicenseData.id);
-
-                if (count > 0) {
-                    showToast('Cannot delete: license has active assignments. Remove them first.', 'error');
-                    return;
-                }
-
-                const { error } = await supabase.from('software_licenses').delete().eq('id', deleteLicenseData.id);
+                const { error } = await supabase
+                    .from('software_licenses')
+                    .update({ is_active: newActive })
+                    .eq('id', toggleLicenseData.id);
                 if (error) throw error;
 
-                await Audit.logLicenseDeleted(deleteLicenseData);
-                showToast('License deleted', 'success');
-                closeDeleteModal();
+                const updatedData = { ...toggleLicenseData, is_active: newActive };
+                await Audit.logLicenseUpdated(toggleLicenseData.id, toggleLicenseData, updatedData);
+
+                showToast(newActive ? 'License reactivated' : 'License deactivated', 'success');
+                closeDeactivateModal();
                 loadStats();
                 loadLicenses();
             } catch (err) {
-                showToast(err.message || 'Failed to delete', 'error');
+                showToast(err.message || 'Failed to update', 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Delete';
             }
         }
 
@@ -837,14 +874,14 @@
         };
         window.closeLicenseModal = () => document.getElementById('license-modal').classList.add('hidden');
         window.closeDetailModal = () => { document.getElementById('detail-modal').classList.add('hidden'); detailLicenseId = null; };
-        window.closeDeleteModal = () => { document.getElementById('delete-modal').classList.add('hidden'); deleteLicenseData = null; };
+        window.closeDeactivateModal = () => { document.getElementById('deactivate-modal').classList.add('hidden'); toggleLicenseData = null; };
 
         window.viewLicenseDetail = viewLicenseDetail;
         window.toggleAssignForm = toggleAssignForm;
         window.assignLicenseToEmployee = assignLicenseToEmployee;
         window.unassignLicense = unassignLicense;
-        window.promptDelete = promptDelete;
-        window.confirmDelete = confirmDelete;
+        window.promptToggleActive = promptToggleActive;
+        window.confirmToggleActive = confirmToggleActive;
 
         window.editLicense = async (id) => {
             const { data: license } = await supabase.from('software_licenses').select('*').eq('id', id).single();

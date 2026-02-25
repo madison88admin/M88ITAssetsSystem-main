@@ -207,7 +207,7 @@
                 <!-- Filters Card -->
                 <div class="card mb-6">
                     <div class="card-body">
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <!-- Search -->
                             <div class="lg:col-span-2">
                                 <div class="search-input">
@@ -248,13 +248,6 @@
                             <div>
                                 <select id="category-filter" class="form-select" onchange="handleFilter()">
                                     <option value="">All Categories</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Location Filter -->
-                            <div>
-                                <select id="location-filter" class="form-select" onchange="handleFilter()">
-                                    <option value="">All Table Assignments</option>
                                 </select>
                             </div>
                         </div>
@@ -498,7 +491,6 @@
         let currentUser = null;
         let assetManager = null;
         let categories = [];
-        let locations = [];
         let currentPage = 1;
         let totalPages = 1;
         let searchTerm = '';
@@ -708,17 +700,6 @@
                 activeCategories.forEach(cat => {
                     assetCategory.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
                 });
-
-                // Load locations
-                const { data: locs, error: locError } = await supabase.from('locations').select('*').order('name');
-                if (locError) console.error('Error loading locations:', locError);
-                locations = locs || [];
-                
-                const locationFilter = document.getElementById('location-filter');
-                
-                locations.forEach(loc => {
-                    locationFilter.innerHTML += `<option value="${loc.id}">${loc.name}</option>`;
-                });
             } catch (error) {
                 console.error('Error loading filter options:', error);
             }
@@ -748,7 +729,6 @@
                 // Apply filters
                 if (filters.status) query = query.eq('status', filters.status);
                 if (filters.category) query = query.eq('category_id', filters.category);
-                if (filters.location) query = query.eq('location_id', filters.location);
 
                 // Pagination
                 const pageSize = 10;
@@ -933,8 +913,7 @@
         window.handleFilter = function() {
             filters = {
                 status: document.getElementById('status-filter').value,
-                category: document.getElementById('category-filter').value,
-                location: document.getElementById('location-filter').value
+                category: document.getElementById('category-filter').value
             };
             currentPage = 1;
             loadAssets();
