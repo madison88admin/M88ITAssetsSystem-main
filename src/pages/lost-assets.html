@@ -17,8 +17,13 @@
     <link rel="stylesheet" href="../styles/styles.css">
     
     <!-- Application Modules -->
+    <script type="module" src="../scripts/utils.js"></script>
     <script type="module" src="../scripts/audit.js"></script>
     <script type="module" src="../scripts/auth.js"></script>
+    <script type="module" src="../scripts/assets.js"></script>
+    <script type="module" src="../scripts/employees.js"></script>
+    <script type="module" src="../scripts/assignments.js"></script>
+    <script type="module" src="../scripts/maintenance.js"></script>
 </head>
 <body>
     <!-- Loading Screen -->
@@ -943,6 +948,17 @@
                         if (oldRecord.original_asset_status) {
                             await supabase.from('assets').update({ status: oldRecord.original_asset_status }).eq('id', assetId);
                         }
+                        
+                        // Auto-return temporary replacement
+                        if (window.Maintenance) {
+                            const returnResult = await window.Maintenance.autoReturnTemporaryReplacement(assetId);
+                            if (returnResult.returned) {
+                                setTimeout(() => showToast(
+                                    `Temporary replacement "${returnResult.tempAssetName}" auto-returned from ${returnResult.employeeName}. Original asset restored.`,
+                                    'info'
+                                ), 500);
+                            }
+                        }
                     } else if (newStatus === 'permanently_lost' && oldRecord.status !== 'permanently_lost') {
                         // Set asset as lost
                         await supabase.from('assets').update({ status: 'lost' }).eq('id', assetId);
@@ -965,6 +981,22 @@
                     await supabase.from('assets').update({ status: 'lost' }).eq('id', assetId);
                     
                     showToast('Lost asset reported successfully', 'success');
+                    
+                    // Auto-assign temporary replacement if asset was assigned
+                    if (data.original_asset_status === 'assigned' && window.Maintenance) {
+                        const replResult = await window.Maintenance.autoAssignTemporaryReplacement(assetId, 'lost');
+                        if (replResult.replaced) {
+                            setTimeout(() => showToast(
+                                `Temporary replacement "${replResult.replacementAsset.asset_tag || replResult.replacementAsset.name}" auto-assigned to ${replResult.employeeName}`,
+                                'info'
+                            ), 500);
+                        } else if (replResult.noStock) {
+                            setTimeout(() => showToast(
+                                'No available replacement asset in the same category for the assigned employee',
+                                'warning'
+                            ), 500);
+                        }
+                    }
                 }
                 
                 closeLostAssetModal();

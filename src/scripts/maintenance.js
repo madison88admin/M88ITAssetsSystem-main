@@ -9,6 +9,180 @@
 
 const Maintenance = {
     // ===========================================
+    // TEMPORARY REPLACEMENT HELPERS
+    // ===========================================
+
+    /**
+     * Auto-assign a temporary replacement asset to the employee
+     * when their current asset goes under repair or is reported lost.
+     * @param {string} assetId - The original asset going unavailable
+     * @param {string} reason - Reason for replacement ('maintenance' or 'lost')
+     * @returns {Promise<object>} Result with replacement info
+     */
+    async autoAssignTemporaryReplacement(assetId, reason = 'maintenance') {
+        try {
+            // 1. Find the active assignment for this asset
+            const { data: activeAssignment } = await window.supabase
+                .from('asset_assignments')
+                .select('id, employee_id, asset_id')
+                .eq('asset_id', assetId)
+                .is('returned_date', null)
+                .eq('assignment_type', 'permanent')
+                .maybeSingle();
+
+            if (!activeAssignment) {
+                // Asset is not assigned to anyone — no replacement needed
+                return { success: true, replaced: false, message: 'Asset not assigned to any employee' };
+            }
+
+            // 2. Check if there's already a temporary replacement for this assignment
+            const { data: existingTemp } = await window.supabase
+                .from('asset_assignments')
+                .select('id')
+                .eq('replaced_assignment_id', activeAssignment.id)
+                .is('returned_date', null)
+                .maybeSingle();
+
+            if (existingTemp) {
+                return { success: true, replaced: false, message: 'Temporary replacement already exists' };
+            }
+
+            // 3. Get the asset's category and region
+            const { data: asset } = await window.supabase
+                .from('assets')
+                .select('category_id, region_id, name, asset_tag')
+                .eq('id', assetId)
+                .single();
+
+            if (!asset || !asset.category_id) {
+                return { success: true, replaced: false, message: 'Could not determine asset category' };
+            }
+
+            // 4. Find an available asset in the same category (and region)
+            let availQ = window.supabase
+                .from('assets')
+                .select('id, name, asset_tag')
+                .eq('category_id', asset.category_id)
+                .eq('status', 'available')
+                .neq('id', assetId)
+                .limit(1);
+            if (asset.region_id) availQ = availQ.eq('region_id', asset.region_id);
+            const { data: availableAssets } = await availQ;
+
+            if (!availableAssets || availableAssets.length === 0) {
+                return { success: true, replaced: false, noStock: true, message: 'No available replacement asset in the same category' };
+            }
+
+            const replacementAsset = availableAssets[0];
+
+            // 5. Create a temporary assignment
+            const result = await Assignments.assign({
+                assetId: replacementAsset.id,
+                employeeId: activeAssignment.employee_id,
+                notes: `Temporary replacement (${reason}) for ${asset.name || ''} (${asset.asset_tag || ''})`,
+                assignedBy: Auth.user?.id,
+                assignmentType: 'temporary',
+                replacedAssignmentId: activeAssignment.id
+            });
+
+            if (!result.success) {
+                return { success: false, error: result.error };
+            }
+
+            // 6. Log audit
+            const employee = await Employees.getById(activeAssignment.employee_id);
+            await Audit.log({
+                action: 'TEMP_ASSIGN',
+                actionCategory: Audit.CATEGORIES.ASSIGNMENT,
+                description: `Auto-assigned temporary replacement ${replacementAsset.asset_tag || replacementAsset.name} to ${employee.data?.full_name || 'employee'} (original ${asset.asset_tag || asset.name} is ${reason === 'lost' ? 'lost' : 'under repair'})`,
+                tableName: 'asset_assignments',
+                recordId: result.data.id,
+                newValues: { 
+                    assignment_type: 'temporary', 
+                    replaced_assignment_id: activeAssignment.id,
+                    reason 
+                }
+            });
+
+            return { 
+                success: true, 
+                replaced: true, 
+                replacementAsset, 
+                employeeName: employee.data?.full_name,
+                data: result.data 
+            };
+        } catch (error) {
+            console.error('Auto-assign temporary replacement error:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    /**
+     * Auto-return a temporary replacement when the original asset is restored.
+     * @param {string} assetId - The original asset being restored
+     * @returns {Promise<object>} Result with return info
+     */
+    async autoReturnTemporaryReplacement(assetId) {
+        try {
+            // 1. Find the original (permanent) assignment for this asset
+            const { data: originalAssignment } = await window.supabase
+                .from('asset_assignments')
+                .select('id, employee_id')
+                .eq('asset_id', assetId)
+                .is('returned_date', null)
+                .eq('assignment_type', 'permanent')
+                .maybeSingle();
+
+            if (!originalAssignment) {
+                return { success: true, returned: false, message: 'No active permanent assignment found' };
+            }
+
+            // 2. Find the active temporary replacement linked to this assignment
+            const { data: tempAssignment } = await window.supabase
+                .from('asset_assignments')
+                .select('id, asset_id, asset:assets(name, asset_tag)')
+                .eq('replaced_assignment_id', originalAssignment.id)
+                .is('returned_date', null)
+                .eq('assignment_type', 'temporary')
+                .maybeSingle();
+
+            if (!tempAssignment) {
+                return { success: true, returned: false, message: 'No active temporary replacement found' };
+            }
+
+            // 3. Return the temporary asset
+            const result = await Assignments.unassign(tempAssignment.id, 'Auto-returned: original asset restored');
+
+            if (!result.success) {
+                return { success: false, error: result.error };
+            }
+
+            // 4. Log audit
+            const employee = await Employees.getById(originalAssignment.employee_id);
+            const tempAssetName = tempAssignment.asset?.asset_tag || tempAssignment.asset?.name || 'Unknown';
+            await Audit.log({
+                action: 'TEMP_RETURN',
+                actionCategory: Audit.CATEGORIES.ASSIGNMENT,
+                description: `Auto-returned temporary replacement ${tempAssetName} from ${employee.data?.full_name || 'employee'} (original asset restored)`,
+                tableName: 'asset_assignments',
+                recordId: tempAssignment.id,
+                oldValues: { assignment_type: 'temporary', replaced_assignment_id: originalAssignment.id }
+            });
+
+            return { 
+                success: true, 
+                returned: true, 
+                tempAssetName,
+                employeeName: employee.data?.full_name,
+                data: result.data 
+            };
+        } catch (error) {
+            console.error('Auto-return temporary replacement error:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // ===========================================
     // CRUD OPERATIONS
     // ===========================================
     
@@ -168,7 +342,13 @@ const Maintenance = {
             // Log audit
             await Audit.logMaintenanceCreated(data, asset.data);
             
-            return { success: true, data };
+            // Auto-assign temporary replacement if asset was assigned
+            let replacementResult = null;
+            if (originalStatus === 'assigned') {
+                replacementResult = await this.autoAssignTemporaryReplacement(recordData.asset_id, 'maintenance');
+            }
+            
+            return { success: true, data, replacementResult };
         } catch (error) {
             console.error('Create maintenance record error:', error);
             return { success: false, error: error.message };
@@ -236,6 +416,8 @@ const Maintenance = {
             
             if (error) throw error;
             
+            let tempReturnResult = null;
+            
             // Check if asset has other active maintenance (excluding current record)
             const { data: otherMaintenance, count } = await window.supabase
                 .from('maintenance_records')
@@ -256,11 +438,12 @@ const Maintenance = {
                 let newStatus = 'available';
                 
                 if (originalStatus === 'assigned') {
-                    // Check if asset still has an active assignment
+                    // Check if asset still has an active permanent assignment
                     const { data: assignment, error: assignmentError } = await window.supabase
                         .from('asset_assignments')
                         .select('id, employee_id')
                         .eq('asset_id', current.data.asset_id)
+                        .eq('assignment_type', 'permanent')
                         .filter('returned_date', 'is', null)
                         .maybeSingle();
                     
@@ -289,6 +472,13 @@ const Maintenance = {
                 
                 // console.log('Restoring asset status to:', newStatus);
                 await Assets.updateStatus(current.data.asset_id, newStatus);
+                
+                // Auto-return temporary replacement if one exists
+                const returnResult = await this.autoReturnTemporaryReplacement(current.data.asset_id);
+                if (returnResult.returned) {
+                    console.log('Auto-returned temporary replacement:', returnResult.tempAssetName);
+                }
+                tempReturnResult = returnResult;
             } else {
                 // console.log('Skipping asset status update - other active maintenance exists');
             }
@@ -299,7 +489,7 @@ const Maintenance = {
             // Log audit
             await Audit.logMaintenanceCompleted(data, asset.data);
             
-            return { success: true, data };
+            return { success: true, data, tempReturnResult };
         } catch (error) {
             console.error('Complete maintenance error:', error);
             return { success: false, error: error.message };
@@ -339,6 +529,9 @@ const Maintenance = {
             // If no other active maintenance, set asset to available
             if (count === 0) {
                 await Assets.updateStatus(current.data.asset_id, 'available');
+                
+                // Auto-return temporary replacement if one exists
+                await this.autoReturnTemporaryReplacement(current.data.asset_id);
             }
             
             return { success: true, data };

@@ -129,7 +129,7 @@ const Assignments = {
      * @param {object} assignmentData - Assignment data
      * @returns {Promise<object>} Created assignment
      */
-    async assign({ assetId, employeeId, notes = '', assignedBy = null, assignedDate = null }) {
+    async assign({ assetId, employeeId, notes = '', assignedBy = null, assignedDate = null, assignmentType = 'permanent', replacedAssignmentId = null }) {
         try {
             // Validate asset
             const asset = await Assets.getById(assetId);
@@ -155,7 +155,8 @@ const Assignments = {
             if (catError) console.error('Category check error:', catError);
             
             // If category doesn't allow multiple assignments, check if employee already has one
-            if (category && category.allow_multiple_assignment === false) {
+            // (Temporary replacements bypass this check since the original asset is unavailable)
+            if (category && category.allow_multiple_assignment === false && assignmentType !== 'temporary') {
                 // Get all active assignments for this employee
                 const { data: activeAssignments, error: checkError } = await window.supabase
                     .from('asset_assignments')
@@ -198,7 +199,9 @@ const Assignments = {
                     employee_id: employeeId,
                     assigned_date: assignedDate || new Date().toISOString().split('T')[0],
                     assigned_by: currentUserId,
-                    notes
+                    notes,
+                    assignment_type: assignmentType,
+                    replaced_assignment_id: replacedAssignmentId || null
                 })
                 .select()
                 .single();

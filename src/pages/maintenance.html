@@ -16,6 +16,8 @@
     <script type="module" src="../scripts/audit.js"></script>
     <script type="module" src="../scripts/auth.js"></script>
     <script type="module" src="../scripts/assets.js"></script>
+    <script type="module" src="../scripts/employees.js"></script>
+    <script type="module" src="../scripts/assignments.js"></script>
     <script type="module" src="../scripts/maintenance.js"></script>
 </head>
 <body>
@@ -824,6 +826,14 @@
                         });
                         if (!result.success) throw new Error(result.error);
                         showToast('Maintenance completed', 'success');
+                        
+                        // Show auto-return notification
+                        if (result.tempReturnResult && result.tempReturnResult.returned) {
+                            setTimeout(() => showToast(
+                                `Temporary replacement "${result.tempReturnResult.tempAssetName}" auto-returned from ${result.tempReturnResult.employeeName}. Original asset restored.`,
+                                'info'
+                            ), 500);
+                        }
                     } else {
                         // Update using Maintenance module (includes audit logging)
                         const result = await Maintenance.update(id, data);
@@ -848,6 +858,21 @@
                     const result = await Maintenance.create(data);
                     if (!result.success) throw new Error(result.error);
                     showToast('Record created', 'success');
+                    
+                    // Show replacement notification
+                    if (result.replacementResult) {
+                        if (result.replacementResult.replaced) {
+                            setTimeout(() => showToast(
+                                `Temporary replacement "${result.replacementResult.replacementAsset.asset_tag || result.replacementResult.replacementAsset.name}" auto-assigned to ${result.replacementResult.employeeName}`,
+                                'info'
+                            ), 500);
+                        } else if (result.replacementResult.noStock) {
+                            setTimeout(() => showToast(
+                                'No available replacement asset in the same category for the assigned employee',
+                                'warning'
+                            ), 500);
+                        }
+                    }
                 }
 
                 closeMaintenanceModal();

@@ -120,7 +120,7 @@
                                     <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                 </div>
                                 <div class="flex-1">
-                                    <h3 class="font-semibold text-white mb-1">Asset Master List</h3>
+                                    <h3 class="font-semibold text-white mb-1">IT Equipment Inventory Master List</h3>
                                     <p class="text-sm text-slate-400 mb-4">Complete list of all IT assets with details</p>
                                     <div class="flex gap-2">
                                         <button onclick="generateReport('assets', 'excel')" class="btn btn-sm btn-primary">Excel</button>
@@ -220,6 +220,25 @@
                                     <div class="flex gap-2">
                                         <button onclick="generateReport('lost_assets', 'excel')" class="btn btn-sm btn-primary">Excel</button>
                                         <button onclick="generateReport('lost_assets', 'pdf')" class="btn btn-sm btn-secondary">PDF</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Software Licenses -->
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 bg-violet-500/20 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-white mb-1">Software Licenses</h3>
+                                    <p class="text-sm text-slate-400 mb-4">All software licenses with assignment and expiry details</p>
+                                    <div class="flex gap-2">
+                                        <button onclick="generateReport('software_licenses', 'excel')" class="btn btn-sm btn-primary">Excel</button>
+                                        <button onclick="generateReport('software_licenses', 'pdf')" class="btn btn-sm btn-secondary">PDF</button>
                                     </div>
                                 </div>
                             </div>
@@ -363,114 +382,140 @@
                 let data = [];
                 let filename = '';
                 let columns = [];
+                let pdfColumns = null; // if set, used instead of columns for PDF export
 
                 switch (type) {
-                    case 'assets':
+                    case 'assets': {
                         let assetQ = supabase.from('v_assets_full').select('*').order('asset_tag');
                         assetQ = applyReportRegionFilter(assetQ);
                         const { data: assets } = await assetQ;
                         data = (assets || []).map(a => ({
-                            'Asset Tag': a.asset_tag,
-                            'Name': a.name,
+                            'Asset Tag': a.asset_tag || '',
+                            'Name': a.name || '',
                             'Category': a.category_name || '',
                             'Brand': a.brand || '',
                             'Model': a.model || '',
                             'Serial Number': a.serial_number || '',
-                            'Status': a.status?.replace('_', ' ') || '',
+                            'Status': a.status ? a.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '',
+                            'Assigned To': a.assigned_to_name || 'Unassigned',
+                            'Department': a.department_name || '',
                             'Location': a.location_name || '',
-                            'Purchase Date': a.purchase_date || '',
-                            'Purchase Cost': a.purchase_cost || '',
-                            'Warranty Expiry': a.warranty_expiry || '',
+                            'Region': a.region_name || '',
+                            'Purchase Date': a.purchase_date ? new Date(a.purchase_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '',
+                            'Purchase Cost': a.purchase_cost ? Utils.formatCurrency(parseFloat(a.purchase_cost)) : '',
+                            'Warranty Expiry': a.warranty_expiry ? new Date(a.warranty_expiry).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '',
+                            'Refresh Date': a.refresh_date ? new Date(a.refresh_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '',
+                            'Notes': a.notes || '',
                             'Logged By': a.logged_by_email || '',
                             'Date Added': a.created_at ? new Date(a.created_at).toLocaleString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : ''
                         }));
-                        filename = 'Asset_Master_List';
-                        columns = ['Asset Tag', 'Name', 'Category', 'Brand', 'Model', 'Serial Number', 'Status', 'Location', 'Purchase Date', 'Purchase Cost', 'Warranty Expiry', 'Logged By', 'Date Added'];
+                        filename = 'IT_Equipment_Inventory';
+                        columns = ['Asset Tag', 'Name', 'Category', 'Brand', 'Model', 'Serial Number', 'Status', 'Assigned To', 'Department', 'Location', 'Region', 'Purchase Date', 'Purchase Cost', 'Warranty Expiry', 'Refresh Date', 'Notes', 'Logged By', 'Date Added'];
                         break;
+                    }
 
-                    case 'assignments':
+                    case 'assignments': {
                         let assignQ = supabase.from('v_asset_assignments_full').select('*').is('returned_date', null);
                         assignQ = applyReportRegionFilter(assignQ);
                         const { data: assignments } = await assignQ;
                         data = (assignments || []).map(a => ({
                             'Asset Tag': a.asset_tag || '',
                             'Asset Name': a.asset_name || '',
-                            'Employee': a.employee_name || '',
+                            'Category': a.category_name || '',
+                            'Serial Number': a.serial_number || '',
+                            'Employee ID': a.employee_code || '',
+                            'Employee Name': a.employee_name || '',
                             'Department': a.department_name || '',
+                            'Assignment Type': a.assignment_type ? a.assignment_type.charAt(0).toUpperCase() + a.assignment_type.slice(1) : 'Permanent',
                             'Assigned Date': a.assigned_date ? new Date(a.assigned_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '',
-                            'Assigned By': a.assigned_by_email || ''
+                            'Assigned By': a.assigned_by_email || '',
+                            'Notes': a.notes || ''
                         }));
                         filename = 'Asset_Assignments';
-                        columns = ['Asset Tag', 'Asset Name', 'Employee', 'Department', 'Assigned Date', 'Assigned By'];
+                        columns = ['Asset Tag', 'Asset Name', 'Category', 'Serial Number', 'Employee ID', 'Employee Name', 'Department', 'Assignment Type', 'Assigned Date', 'Assigned By', 'Notes'];
                         break;
+                    }
 
-                    case 'warranty':
+                    case 'warranty': {
+                        let wBaseQ = supabase.from('v_warranty_expiring').select('*').order('warranty_expiry', { ascending: true });
                         let warrantyResult;
                         if (reportRegionId) {
-                            // Try filtering by region (requires migration 021)
-                            let wQuery = supabase.from('v_warranty_expiring').select('*');
-                            wQuery = applyReportRegionFilter(wQuery);
-                            const { data: wData, error: wErr } = await wQuery;
+                            const { data: wData, error: wErr } = await applyReportRegionFilter(wBaseQ);
                             if (wErr) {
-                                // Fallback: view may not have region_id yet
                                 console.warn('v_warranty_expiring region filter failed, fetching all:', wErr.message);
-                                const { data: wAll } = await supabase.from('v_warranty_expiring').select('*');
+                                const { data: wAll } = await supabase.from('v_warranty_expiring').select('*').order('warranty_expiry', { ascending: true });
                                 warrantyResult = wAll;
                             } else {
                                 warrantyResult = wData;
                             }
                         } else {
-                            const { data: wAll } = await supabase.from('v_warranty_expiring').select('*');
+                            const { data: wAll } = await wBaseQ;
                             warrantyResult = wAll;
                         }
                         data = (warrantyResult || []).map(a => ({
-                            'Asset Tag': a.asset_tag,
-                            'Name': a.name,
+                            'Asset Tag': a.asset_tag || '',
+                            'Name': a.name || '',
+                            'Category': a.category_name || '',
+                            'Brand': a.brand || '',
+                            'Model': a.model || '',
+                            'Serial Number': a.serial_number || '',
+                            'Status': a.status ? a.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '',
+                            'Department': a.department_name || '',
+                            'Location': a.location_name || '',
                             'Warranty Expiry': a.warranty_expiry ? new Date(a.warranty_expiry).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '',
-                            'Days Until Expiry': a.days_until_expiry || ''
+                            'Days Until Expiry': a.days_until_expiry != null ? String(a.days_until_expiry) : ''
                         }));
                         filename = 'Warranty_Expiring';
-                        columns = ['Asset Tag', 'Name', 'Warranty Expiry', 'Days Until Expiry'];
+                        columns = ['Asset Tag', 'Name', 'Category', 'Brand', 'Model', 'Serial Number', 'Status', 'Department', 'Location', 'Warranty Expiry', 'Days Until Expiry'];
                         break;
+                    }
 
-                    case 'maintenance':
-                        let maintQ = supabase.from('v_maintenance_records_full').select('*').order('created_at', { ascending: false });
+                    case 'maintenance': {
+                        let maintQ = supabase.from('v_maintenance_records_full').select('*').order('start_date', { ascending: false });
                         maintQ = applyReportRegionFilter(maintQ);
                         const { data: maint } = await maintQ;
                         data = (maint || []).map(m => ({
                             'Asset Tag': m.asset_tag || '',
                             'Asset Name': m.asset_name || '',
-                            'Type': m.maintenance_type || '',
-                            'Issue': m.issue_description || '',
+                            'Serial Number': m.serial_number || '',
+                            'Type': m.maintenance_type ? m.maintenance_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '',
+                            'Issue Description': m.issue_description || '',
                             'Resolution': m.resolution || '',
-                            'Status': m.status?.replace('_', ' ') || '',
-                            'Start Date': m.start_date || '',
-                            'Completed': m.completed_date || '',
-                            'Cost': m.cost || '',
-                            'Logged By': m.created_by_email || ''
+                            'Status': m.status ? m.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '',
+                            'Performed By': m.performed_by || '',
+                            'Start Date': m.start_date ? new Date(m.start_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '',
+                            'Completed Date': m.completed_date ? new Date(m.completed_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : '',
+                            'Cost': m.cost ? Utils.formatCurrency(parseFloat(m.cost)) : '',
+                            'Notes': m.notes || '',
+                            'Logged By': m.created_by_email || '',
+                            'Date Logged': m.created_at ? new Date(m.created_at).toLocaleString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : ''
                         }));
                         filename = 'Maintenance_History';
-                        columns = ['Asset Tag', 'Asset Name', 'Type', 'Issue', 'Resolution', 'Status', 'Start Date', 'Completed', 'Cost', 'Logged By'];
+                        columns = ['Asset Tag', 'Asset Name', 'Serial Number', 'Type', 'Issue Description', 'Resolution', 'Status', 'Performed By', 'Start Date', 'Completed Date', 'Cost', 'Notes', 'Logged By', 'Date Logged'];
                         break;
+                    }
 
-                    case 'employees':
+                    case 'employees': {
                         let empQ = supabase.from('v_employees_full').select('*').order('full_name');
                         empQ = applyReportRegionFilter(empQ);
                         const { data: emps } = await empQ;
                         data = (emps || []).map(e => ({
-                            'Employee ID': e.employee_id,
-                            'Full Name': e.full_name,
+                            'Employee ID': e.employee_id || '',
+                            'Full Name': e.full_name || '',
                             'Email': e.email || '',
+                            'Phone': e.phone || '',
                             'Department': e.department_name || '',
                             'Position': e.position || '',
                             'Location': e.location_name || '',
+                            'Region': e.region_name || '',
                             'Status': e.is_active ? 'Active' : 'Inactive',
                             'Added By': e.created_by_email || '',
                             'Date Added': e.created_at ? new Date(e.created_at).toLocaleString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : ''
                         }));
                         filename = 'Employee_Directory';
-                        columns = ['Employee ID', 'Full Name', 'Email', 'Department', 'Position', 'Location', 'Status', 'Added By', 'Date Added'];
+                        columns = ['Employee ID', 'Full Name', 'Email', 'Phone', 'Department', 'Position', 'Location', 'Region', 'Status', 'Added By', 'Date Added'];
                         break;
+                    }
 
                     case 'lost_assets':
                         let lostQ = supabase.from('v_lost_assets_full').select('*').order('date_reported', { ascending: false });
@@ -499,6 +544,47 @@
                         columns = ['Asset Tag', 'Asset Name', 'Serial Number', 'Employee Responsible', 'Department', 'Date Reported', 'Last Known Location', 'Status', 'Date Found', 'Estimated Value', 'Liability Amount', 'Liability Action', 'Payment Status', 'Circumstances', 'Recovery Notes', 'Resolution Notes', 'Reported By'];
                         break;
 
+                    case 'software_licenses': {
+                        let slQ = supabase
+                            .from('software_licenses')
+                            .select(`
+                                *,
+                                category:software_categories(name),
+                                region:regions(name),
+                                assignments:license_assignments(id, employee_id, asset_id)
+                            `)
+                            .order('name', { ascending: true });
+                        if (reportRegionId) {
+                            slQ = slQ.eq('region_id', reportRegionId);
+                        }
+                        const { data: licenses } = await slQ;
+                        data = (licenses || []).map(l => {
+                            const totalAssignments = l.assignments?.length || 0;
+                            const employeeAssignments = l.assignments?.filter(a => a.employee_id).length || 0;
+                            const assetAssignments = l.assignments?.filter(a => a.asset_id).length || 0;
+                            return {
+                                'Software Name': l.name || '',
+                                'Category': l.category?.name || '',
+                                'License Type': l.license_type ? l.license_type.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) : '',
+                                'Key / Credential Type': l.key_type === 'email' ? 'Email Credential' : 'License Key',
+                                'License Key / Email': l.license_key || '',
+                                'Seats': l.seats === 9999 ? 'Unlimited' : (l.seats || ''),
+                                'Assigned (Employees)': employeeAssignments,
+                                'Assigned (Assets)': assetAssignments,
+                                'Total Assignments': totalAssignments,
+                                'Expiry Date': l.expiry_date ? new Date(l.expiry_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) : 'No Expiry',
+                                'Status': l.is_active ? 'Active' : 'Inactive',
+                                'Region': l.region?.name || '',
+                                'Date Added': l.created_at ? new Date(l.created_at).toLocaleString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : ''
+                            };
+                        });
+                        filename = 'Software_Licenses';
+                        columns = ['Software Name', 'Category', 'License Type', 'Key / Credential Type', 'License Key / Email', 'Seats', 'Assigned (Employees)', 'Assigned (Assets)', 'Total Assignments', 'Expiry Date', 'Status', 'Region', 'Date Added'];
+                        // Exclude sensitive credential column from PDF export
+                        pdfColumns = columns.filter(c => c !== 'License Key / Email');
+                        break;
+                    }
+
                     case 'audit':
                         const { data: logs } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(500);
                         data = (logs || []).map(l => ({
@@ -521,7 +607,7 @@
                 if (format === 'excel') {
                     exportToExcel(data, filename);
                 } else {
-                    exportToPDF(data, columns, filename);
+                    exportToPDF(data, pdfColumns || columns, filename);
                 }
 
                 // Log to audit trail
@@ -543,25 +629,63 @@
 
         function exportToPDF(data, columns, filename) {
             const { jsPDF } = window.jspdf;
+            // A4 landscape: 297 × 210 mm
             const doc = new jsPDF('l', 'mm', 'a4');
             const generatedBy = currentUser?.email || 'Unknown User';
-            
-            doc.setFontSize(16);
-            doc.text(`Madison 88 - ${filename.replace(/_/g, ' ')}`, 14, 15);
-            doc.setFontSize(10);
-            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
-            doc.text(`Generated by: ${generatedBy}`, 14, 28);
-            
-            const tableData = data.map(row => columns.map(col => row[col] || ''));
-            
+            const pageWidth = doc.internal.pageSize.getWidth(); // 297
+            const marginH = 8;
+            const usableWidth = pageWidth - marginH * 2; // 281 mm
+
+            // Title and metadata
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Madison 88 \u2014 ${filename.replace(/_/g, ' ')}`, marginH, 12);
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(7);
+            doc.text(
+                `Generated: ${new Date().toLocaleString('en-US')}  \u00B7  By: ${generatedBy}  \u00B7  Total records: ${data.length}`,
+                marginH, 19
+            );
+
+            const tableData = data.map(row =>
+                columns.map(col => {
+                    const val = row[col];
+                    return val === null || val === undefined ? '' : String(val);
+                })
+            );
+
+            // Divide usable width equally; all columns fit on one page with linebreak wrapping
+            const colWidth = usableWidth / columns.length;
+            const columnStyles = {};
+            columns.forEach((_, i) => {
+                columnStyles[i] = { cellWidth: colWidth, overflow: 'linebreak' };
+            });
+
             doc.autoTable({
                 head: [columns],
                 body: tableData,
-                startY: 34,
-                styles: { fontSize: 8 },
-                headStyles: { fillColor: [59, 130, 246] }
+                startY: 23,
+                margin: { left: marginH, right: marginH, top: marginH, bottom: 8 },
+                tableWidth: usableWidth,
+                styles: {
+                    fontSize: 6.5,
+                    cellPadding: 1.5,
+                    overflow: 'linebreak',
+                    valign: 'top'
+                },
+                headStyles: {
+                    fillColor: [59, 130, 246],
+                    textColor: 255,
+                    fontStyle: 'bold',
+                    fontSize: 6.5,
+                    overflow: 'linebreak',
+                    valign: 'middle',
+                    halign: 'center'
+                },
+                alternateRowStyles: { fillColor: [245, 247, 250] },
+                columnStyles
             });
-            
+
             doc.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`);
         }
 

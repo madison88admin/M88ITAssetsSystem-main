@@ -160,50 +160,6 @@
         </main>
     </div>
 
-    <!-- Edit License Modal -->
-    <div id="license-modal" class="modal-overlay hidden">
-        <div class="modal max-w-lg">
-            <div class="modal-header">
-                <h3 class="modal-title" id="modal-title">Edit License</h3>
-                <button onclick="closeLicenseModal()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
-            </div>
-            <form id="license-form" onsubmit="handleSubmit(event)">
-                <input type="hidden" id="license-id">
-                <div class="modal-body space-y-4">
-                    <div class="form-group">
-                        <label class="form-label">Product Name</label>
-                        <input type="text" id="license-name" class="form-input bg-slate-700/50" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Credential Type</label>
-                        <div class="flex bg-slate-700 rounded-lg overflow-hidden border border-slate-600 w-fit">
-                            <button type="button" class="edit-key-toggle px-3 py-1.5 text-sm bg-purple-600 text-white" data-type="license_key" onclick="toggleEditKeyType(this)">License Key</button>
-                            <button type="button" class="edit-key-toggle px-3 py-1.5 text-sm text-slate-400 hover:text-white" data-type="email" onclick="toggleEditKeyType(this)">Email</button>
-                        </div>
-                        <input type="hidden" id="license-key-type" value="license_key">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="license-key" id="license-key-label">License Key</label>
-                        <input type="text" id="license-key" class="form-input" placeholder="XXXXX-XXXXX-XXXXX" maxlength="25" data-key-type="license_key" oninput="handleSwKeyInput(this)">
-                        <p id="edit-key-warning" class="sw-key-warning text-xs text-yellow-400 hidden"></p>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="license-expiry">Expiry Date</label>
-                        <input type="date" id="license-expiry" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="license-notes">Notes</label>
-                        <textarea id="license-notes" class="form-textarea" rows="2"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeLicenseModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <div id="toast-container"></div>
 
     <!-- License Detail / Assignments Modal -->
@@ -259,6 +215,50 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Edit License Modal -->
+    <div id="license-modal" class="modal-overlay hidden">
+        <div class="modal max-w-lg">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Edit License</h3>
+                <button onclick="closeLicenseModal()" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <form id="license-form" onsubmit="handleSubmit(event)">
+                <input type="hidden" id="license-id">
+                <div class="modal-body space-y-4">
+                    <div class="form-group">
+                        <label class="form-label">Product Name</label>
+                        <input type="text" id="license-name" class="form-input bg-slate-700/50" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Credential Type</label>
+                        <div class="flex bg-slate-700 rounded-lg overflow-hidden border border-slate-600 w-fit">
+                            <button type="button" class="edit-key-toggle px-3 py-1.5 text-sm bg-purple-600 text-white" data-type="license_key" onclick="toggleEditKeyType(this)">License Key</button>
+                            <button type="button" class="edit-key-toggle px-3 py-1.5 text-sm text-slate-400 hover:text-white" data-type="email" onclick="toggleEditKeyType(this)">Email</button>
+                        </div>
+                        <input type="hidden" id="license-key-type" value="license_key">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="license-key" id="license-key-label">License Key</label>
+                        <input type="text" id="license-key" class="form-input" placeholder="XXXXX-XXXXX-XXXXX" maxlength="25" data-key-type="license_key" oninput="handleSwKeyInput(this)">
+                        <p id="edit-key-warning" class="sw-key-warning text-xs text-yellow-400 hidden"></p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="license-expiry">Expiry Date</label>
+                        <input type="date" id="license-expiry" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="license-notes">Notes</label>
+                        <textarea id="license-notes" class="form-textarea" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeLicenseModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
         </div>
     </div>
 
