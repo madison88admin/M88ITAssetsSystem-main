@@ -331,7 +331,12 @@
             <form id="lost-asset-form" onsubmit="handleSubmit(event)">
                 <div class="modal-body">
                     <input type="hidden" id="record-id">
-                    
+                    <input type="hidden" id="original-status">
+                    <!-- Notice shown when editing a resolved (found / permanently lost) record -->
+                    <div id="resolved-edit-notice" class="flex items-start gap-2 p-3 mb-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-300">
+                        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>This record is already <strong id="resolved-status-label">resolved</strong>. Status cannot be changed back. You may still edit <strong>Last Known Location</strong>, <strong>Estimated Value</strong>, <strong>Liability</strong>, <strong>Payment Status</strong>, <strong>Circumstances</strong>, <strong>Recovery Notes</strong>, and <strong>Resolution Notes</strong>.</span>
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Asset Selection -->
                         <div class="form-group">
@@ -781,10 +786,12 @@
         window.openLostAssetModal = async function() {
             document.getElementById('lost-asset-form').reset();
             document.getElementById('record-id').value = '';
+            document.getElementById('original-status').value = '';
             document.getElementById('modal-title').textContent = 'Report Lost Asset';
             document.getElementById('date-reported').valueAsDate = new Date();
             document.getElementById('status-select').value = 'under_investigation';
             document.getElementById('employee-select').value = 'unassigned';
+            document.getElementById('resolved-edit-notice').classList.add('hidden');
             // Re-enable all fields (may have been disabled by a previous edit)
             document.querySelectorAll('#lost-asset-form input, #lost-asset-form select, #lost-asset-form textarea').forEach(el => {
                 el.disabled = false;
@@ -832,14 +839,35 @@
                 document.getElementById('circumstances').value = record.circumstances || '';
                 document.getElementById('recovery-notes').value = record.recovery_notes || '';
                 document.getElementById('resolution-notes').value = record.resolution_notes || '';
-                
-                handleStatusChange();
 
-                // Lock fields that should not be edited
+                // Store original status for save guard
+                document.getElementById('original-status').value = record.status;
+
+                // Re-enable everything first (clean slate from any prior modal open)
+                document.querySelectorAll('#lost-asset-form input, #lost-asset-form select, #lost-asset-form textarea').forEach(el => {
+                    el.disabled = false;
+                });
+
+                // Always lock: asset, employee, date reported
                 document.getElementById('asset-select').disabled = true;
                 document.getElementById('employee-select').disabled = true;
                 document.getElementById('date-reported').disabled = true;
-                
+
+                const isResolved = record.status === 'found' || record.status === 'permanently_lost';
+                if (isResolved) {
+                    // Lock status and date-found — cannot roll back a resolved record
+                    document.getElementById('status-select').disabled = true;
+                    document.getElementById('date-found').disabled = true;
+                    // Show notice with the current resolved status label
+                    const statusLabels = { found: 'Found', permanently_lost: 'Permanently Lost' };
+                    document.getElementById('resolved-status-label').textContent = statusLabels[record.status] || 'resolved';
+                    document.getElementById('resolved-edit-notice').classList.remove('hidden');
+                } else {
+                    document.getElementById('resolved-edit-notice').classList.add('hidden');
+                }
+
+                handleStatusChange();
+
                 document.getElementById('modal-title').textContent = 'Edit Lost Asset Record';
                 document.getElementById('lost-asset-modal').classList.remove('hidden');
             } catch (error) {
@@ -893,6 +921,13 @@
             const recordId = document.getElementById('record-id').value;
             const assetId = document.getElementById('asset-select').value;
             const newStatus = document.getElementById('status-select').value;
+            const originalStatus = document.getElementById('original-status').value;
+
+            // Safety guard: prevent rolling back a resolved record to under_investigation
+            if (recordId && (originalStatus === 'found' || originalStatus === 'permanently_lost') && newStatus === 'under_investigation') {
+                showToast('A resolved record cannot be set back to Under Investigation.', 'error');
+                return;
+            }
 
             // Block if this asset has an active Maintenance record (in progress)
             if (assetId && !recordId) {

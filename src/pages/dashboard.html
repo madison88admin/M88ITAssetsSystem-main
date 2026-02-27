@@ -201,6 +201,10 @@
                     </select>
                     <!-- Region label (Admin/IT Staff) -->
                     <span id="region-label" class="hidden ml-3 text-sm text-slate-400"></span>
+                    <!-- Month Selector (Executive, Exec-Admin, Admin, IT Staff) -->
+                    <select id="month-selector" class="hidden ml-4 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" onchange="handleMonthChange(this.value)">
+                        <option value="">All Months</option>
+                    </select>
                 </div>
                 <div class="topbar-right">
                     <!-- Notifications (hidden for admin/IT staff who have the Alerts panel) -->
@@ -232,9 +236,27 @@
             <div class="page-content">
                 <!-- Page Header -->
                 <div class="page-header">
-                    <h1 class="page-title" id="dashboard-title">Dashboard Overview</h1>
-                    <p class="page-subtitle">Welcome back, <span id="welcome-user-name" class="text-blue-400 font-medium">User</span>! Here's what's happening with your IT assets.</p>
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <h1 class="page-title mb-0" id="dashboard-title">Dashboard Overview</h1>
+                        <!-- Hardware / Software Toggle -->
+                        <div class="dashboard-toggle" id="dashboard-toggle">
+                            <button class="dashboard-toggle-btn active" id="toggle-hardware" onclick="switchDashboardView('hardware')">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                Hardware
+                            </button>
+                            <button class="dashboard-toggle-btn" id="toggle-software" onclick="switchDashboardView('software')">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                Software
+                            </button>
+                        </div>
+                    </div>
+                    <p class="page-subtitle mt-2">Welcome back, <span id="welcome-user-name" class="text-blue-400 font-medium">User</span>! Here's what's happening with your IT assets.</p>
                 </div>
+
+                <!-- =============================================
+                     HARDWARE DASHBOARD (default view)
+                     ============================================= -->
+                <div id="hardware-dashboard">
 
                 <!-- Stats Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -423,6 +445,153 @@
                         </div>
                     </div>
                 </div>
+                </div><!-- end hardware-dashboard -->
+
+                <!-- =============================================
+                     SOFTWARE DASHBOARD (hidden by default)
+                     ============================================= -->
+                <div id="software-dashboard" class="hidden">
+
+                <!-- Software Stats Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <!-- Total Products -->
+                    <div class="stat-card bg-linear-to-br from-blue-600 to-blue-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-blue-200 text-sm font-medium">Total Products</p>
+                                <p class="text-3xl font-bold text-white mt-1" id="sw-stat-total">--</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <p class="text-blue-200 text-xs mt-2">Software products tracked</p>
+                    </div>
+
+                    <!-- Active Licenses -->
+                    <div class="stat-card bg-linear-to-br from-green-600 to-green-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-green-200 text-sm font-medium">Active</p>
+                                <p class="text-3xl font-bold text-white mt-1" id="sw-stat-active">--</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <p class="text-green-200 text-xs mt-2">Currently active licenses</p>
+                    </div>
+
+                    <!-- Expiring Soon -->
+                    <div class="stat-card bg-linear-to-br from-yellow-600 to-yellow-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-yellow-200 text-sm font-medium">Expiring Soon</p>
+                                <p class="text-3xl font-bold text-white mt-1" id="sw-stat-expiring">--</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <p class="text-yellow-200 text-xs mt-2">Expiring within 90 days</p>
+                    </div>
+
+                    <!-- Expired -->
+                    <div class="stat-card bg-linear-to-br from-red-600 to-red-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-red-200 text-sm font-medium">Expired</p>
+                                <p class="text-3xl font-bold text-white mt-1" id="sw-stat-expired">--</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <p class="text-red-200 text-xs mt-2">Past expiry date</p>
+                    </div>
+                </div>
+
+                <!-- Software Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Licenses by Status -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Licenses by Status</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="sw-status-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Licenses by Category -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Licenses by Category</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="sw-category-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Software Bottom Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- License Activity Trends -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">License Expiry Timeline</h3>
+                            <p class="text-xs text-slate-400 mt-1">Licenses expiring over the next 12 months</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" style="height: 280px;">
+                                <canvas id="sw-expiry-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Software Alerts & Reminders -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Software Alerts</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="sw-alerts-list" class="divide-y divide-slate-700 max-h-64 overflow-y-auto">
+                                <div class="p-4 text-center text-slate-400">
+                                    Loading alerts...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Software License Health Matrix -->
+                <div class="card mt-6">
+                    <div class="card-header">
+                        <h3 class="card-title">License Health & Status Matrix</h3>
+                        <p class="text-xs text-slate-400 mt-1">Software license status overview by category</p>
+                    </div>
+                    <div class="card-body">
+                        <div id="sw-heatmap-container" class="overflow-x-auto">
+                            <div class="text-center text-slate-400 py-8">
+                                Loading software matrix...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div><!-- end software-dashboard -->
+
             </div>
         </main>
     </div>
@@ -469,6 +638,9 @@
         let regionsMap = {}; // region_id → { id, name, code, ... }
         let exchangeRates = null; // { PHP: 56.2, IDR: 15800, CNY: 7.25, ... } — rates relative to USD
         let exchangeRatesLoaded = false;
+        let currentDashboardView = 'hardware'; // 'hardware' or 'software'
+        let softwareDataLoaded = false; // track if software data has been loaded at least once
+        let selectedMonthKey = null; // null = all months, or 'YYYY-MM' string
         
         /**
          * Apply region filter to a Supabase query based on current selection
@@ -487,11 +659,37 @@
             if (selectedRegionId) return regionId === selectedRegionId;
             return true;
         }
+
+        /**
+         * Returns { startDate, endDate } strings for the selected month, or null if no month selected
+         */
+        function getMonthDateRange() {
+            if (!selectedMonthKey) return null;
+            const [year, month] = selectedMonthKey.split('-').map(Number);
+            const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+            return { startDate, endDate };
+        }
+
+        /**
+         * Apply month filter to a Supabase query based on current month selection
+         */
+        function applyMonthFilter(query, dateColumn = 'created_at') {
+            const range = getMonthDateRange();
+            if (!range) return query;
+            return query.gte(dateColumn, range.startDate).lte(dateColumn, range.endDate);
+        }
         
         // Chart instances (need to be destroyed before recreating)
         let statusChartInstance = null;
         let categoryChartInstance = null;
         let acquisitionChartInstance = null;
+
+        // Software chart instances
+        let swStatusChartInstance = null;
+        let swCategoryChartInstance = null;
+        let swExpiryChartInstance = null;
 
         /**
          * Initialize the dashboard
@@ -544,6 +742,9 @@
 
                 // Setup region context
                 await setupRegionContext();
+
+                // Setup month selector
+                setupMonthSelector();
 
                 // Hide notification bell for admin/IT staff (they use the Alerts & Reminders panel)
                 if (currentUser.role === 'admin' || currentUser.role === 'it_staff' || currentUser.role === 'viewer' || currentUser.role === 'executive') {
@@ -644,9 +845,10 @@
                 selectedRegionId = currentUser.region_id || null;
                 
                 if (currentUser.region_id && regionLabel) {
-                    // Fetch region name
-                    const { data: region } = await supabase.from('regions').select('name').eq('id', currentUser.region_id).single();
+                    // Fetch region (full row so regionsMap has the code for colour lookup)
+                    const { data: region } = await supabase.from('regions').select('*').eq('id', currentUser.region_id).single();
                     if (region) {
+                        regionsMap[region.id] = region; // populate for colour lookup
                         regionLabel.textContent = region.name;
                         regionLabel.classList.remove('hidden');
                         if (dashboardTitle) dashboardTitle.textContent = region.name;
@@ -655,6 +857,54 @@
             }
             // Viewer: no region context shown, sees default dashboard title
         }
+
+        /**
+         * Setup month selector dropdown — shown for exec, exec-admin, admin, it_staff
+         */
+        function setupMonthSelector() {
+            const monthSelector = document.getElementById('month-selector');
+            if (!monthSelector) return;
+
+            // Show for executive, exec-admin, admin, it_staff (not viewer)
+            const role = currentUser.role;
+            const shouldShow = currentUser.isExecAdmin || ['executive', 'admin', 'it_staff'].includes(role);
+            if (!shouldShow) return;
+
+            // Populate: past 12 months + current month + next 11 months (24 total)
+            const now = new Date();
+            const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+            // Past 12 months (oldest first)
+            for (let i = 12; i >= 1; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = label;
+                monthSelector.appendChild(opt);
+            }
+            // Current month + next 11 months
+            for (let i = 0; i < 12; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = label + (key === currentKey ? ' (Current)' : '');
+                monthSelector.appendChild(opt);
+            }
+
+            monthSelector.classList.remove('hidden');
+        }
+
+        /**
+         * Handle month dropdown change
+         */
+        window.handleMonthChange = async function(monthKey) {
+            selectedMonthKey = monthKey || null;
+            await loadDashboardData();
+        };
 
         /**
          * Handle region dropdown change (Executive only)
@@ -678,19 +928,31 @@
         };
 
         /**
-         * Load dashboard data
+         * Load dashboard data based on current view
          */
         async function loadDashboardData() {
             try {
-                // Load all data in parallel for speed
-                await Promise.all([
-                    loadStats(),
-                    loadCharts(),
-                    loadAcquisitionTrends(),
-                    loadHeatmap(),
-                    loadAlerts(),
-                    loadExecutiveSummary()
-                ]);
+                if (currentDashboardView === 'hardware') {
+                    // Load hardware data in parallel for speed
+                    await Promise.all([
+                        loadStats(),
+                        loadCharts(),
+                        loadAcquisitionTrends(),
+                        loadHeatmap(),
+                        loadAlerts(),
+                        loadExecutiveSummary()
+                    ]);
+                } else {
+                    // Load software data in parallel
+                    await Promise.all([
+                        loadSoftwareStats(),
+                        loadSoftwareCharts(),
+                        loadSoftwareExpiryTrends(),
+                        loadSoftwareAlerts(),
+                        loadSoftwareHeatmap()
+                    ]);
+                    softwareDataLoaded = true;
+                }
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
             }
@@ -700,11 +962,12 @@
          * Load statistics
          */
         async function loadStats() {
-            // Get asset counts by status
+            // Get asset counts by status (optionally filtered by acquisition month)
             let statsQuery = supabase
                 .from('assets')
                 .select('status');
             statsQuery = applyRegionFilter(statsQuery);
+            statsQuery = applyMonthFilter(statsQuery, 'created_at');
             const { data: assets, error } = await statsQuery;
 
             if (error) {
@@ -740,6 +1003,7 @@
                     .from('assets')
                     .select('status, category:asset_categories(name)');
                 statusQuery = applyRegionFilter(statusQuery);
+                statusQuery = applyMonthFilter(statusQuery, 'created_at');
                 const { data: statusData, error: statusError } = await statusQuery;
 
                 if (statusError) {
@@ -911,42 +1175,161 @@
                     }]
                 });
 
-            // Category Chart
+            // Category Chart — stacked by region when All Regions, single color otherwise
+            // Region colour palette (keyed by region code from CONFIG.REGIONS)
+            const regionColorPalette = {
+                'PH': '#06b6d4',   // cyan   – Philippines
+                'ID': '#f97316',   // orange – Indonesia
+                'CN': '#ef4444',   // red    – China
+                'US': '#3b82f6',   // blue   – United States
+            };
+            const regionColorFallback = '#8b5cf6'; // purple for unrecognised regions
+
+            // Helper: get colour for a region_id using regionsMap (populated for execs)
+            function getRegionColor(regionId) {
+                const code = regionsMap[regionId]?.code || '';
+                return regionColorPalette[code] || regionColorFallback;
+            }
+
+            // Always fetch region_id so we can build the stacked chart
             let catQuery = supabase
                 .from('assets')
-                .select('category:asset_categories(name)');
+                .select('region_id, category:asset_categories(name)');
             catQuery = applyRegionFilter(catQuery);
+            catQuery = applyMonthFilter(catQuery, 'created_at');
             const { data: categoryData } = await catQuery;
 
-            const categoryCounts = {};
-            categoryData?.forEach(asset => {
-                const catName = asset.category?.name || 'Uncategorized';
-                categoryCounts[catName] = (categoryCounts[catName] || 0) + 1;
-            });
-
-            // Destroy existing chart if it exists
+            // Destroy existing chart first
             if (categoryChartInstance) {
                 categoryChartInstance.destroy();
                 categoryChartInstance = null;
             }
 
-            categoryChartInstance = new Chart(document.getElementById('category-chart'), {
-                type: 'bar',
-                data: {
+            let catChartData;
+            let catChartOptions;
+
+            if (!selectedRegionId) {
+                // ── ALL REGIONS: stacked bar chart ──────────────────────────────
+                // Collect all categories and all region_ids present in data
+                const allCategories = new Set();
+                const allRegionIds  = new Set();
+                (categoryData || []).forEach(asset => {
+                    allCategories.add(asset.category?.name || 'Uncategorized');
+                    if (asset.region_id) allRegionIds.add(asset.region_id);
+                });
+
+                const sortedCategories = [...allCategories].sort();
+                // Sort regions deterministically by their display label (or id)
+                const sortedRegionIds = [...allRegionIds].sort((a, b) => {
+                    const la = regionsMap[a]?.name || a;
+                    const lb = regionsMap[b]?.name || b;
+                    return la.localeCompare(lb);
+                });
+
+                // Build a count matrix  regionId → categoryName → count
+                const matrix = {};
+                sortedRegionIds.forEach(rid => {
+                    matrix[rid] = {};
+                    sortedCategories.forEach(cat => { matrix[rid][cat] = 0; });
+                });
+                (categoryData || []).forEach(asset => {
+                    const cat = asset.category?.name || 'Uncategorized';
+                    const rid = asset.region_id;
+                    if (rid && matrix[rid]) matrix[rid][cat]++;
+                });
+
+                // One dataset per region
+                const datasets = sortedRegionIds.map(rid => {
+                    const regionName = regionsMap[rid]?.name || `Region ${rid}`;
+                    const color = getRegionColor(rid);
+                    return {
+                        label: regionName,
+                        data: sortedCategories.map(cat => matrix[rid][cat]),
+                        backgroundColor: color,
+                        borderColor: color,
+                        borderRadius: 2
+                    };
+                });
+
+                catChartData = { labels: sortedCategories, datasets };
+                catChartOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#94a3b8',
+                                padding: 8,
+                                font: { size: 9 },
+                                boxWidth: 10,
+                                boxHeight: 10,
+                                usePointStyle: true,
+                                pointStyle: 'rect'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#fff',
+                            bodyColor: '#94a3b8',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                title: ctx => ctx[0].label,
+                                label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false }
+                        },
+                        y: {
+                            stacked: true,
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                };
+
+            } else {
+                // ── SINGLE REGION: simple bar with region colour ─────────────
+                const categoryCounts = {};
+                (categoryData || []).forEach(asset => {
+                    const catName = asset.category?.name || 'Uncategorized';
+                    categoryCounts[catName] = (categoryCounts[catName] || 0) + 1;
+                });
+
+                const regionColor = getRegionColor(selectedRegionId);
+                const regionName  = regionsMap[selectedRegionId]?.name || 'Assets';
+
+                catChartData = {
                     labels: Object.keys(categoryCounts),
                     datasets: [{
-                        label: 'Assets',
+                        label: regionName,
                         data: Object.values(categoryCounts),
-                        backgroundColor: '#3b82f6',
+                        backgroundColor: regionColor,
                         borderRadius: 4
                     }]
-                },
-                options: {
+                };
+                catChartOptions = {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#fff',
+                            bodyColor: '#94a3b8',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 12
                         }
                     },
                     scales: {
@@ -959,7 +1342,13 @@
                             grid: { color: '#334155' }
                         }
                     }
-                }
+                };
+            }
+
+            categoryChartInstance = new Chart(document.getElementById('category-chart'), {
+                type: 'bar',
+                data: catChartData,
+                options: catChartOptions
             });
             } catch (error) {
                 console.error('Error loading charts:', error);
@@ -1229,6 +1618,7 @@
                     .from('assets')
                     .select('status, category:asset_categories(name)');
                 heatmapQuery = applyRegionFilter(heatmapQuery);
+                heatmapQuery = applyMonthFilter(heatmapQuery, 'created_at');
                 const { data: assets, error } = await heatmapQuery;
 
                 if (error) {
@@ -1617,6 +2007,700 @@
                 </div>
                 `;
             }).join('');
+        }
+
+        // =============================================
+        // DASHBOARD VIEW SWITCHING (Hardware / Software)
+        // =============================================
+
+        /**
+         * Switch between hardware and software dashboard views
+         */
+        window.switchDashboardView = async function(view) {
+            if (view === currentDashboardView) return;
+            currentDashboardView = view;
+
+            const hwDash = document.getElementById('hardware-dashboard');
+            const swDash = document.getElementById('software-dashboard');
+            const toggleHW = document.getElementById('toggle-hardware');
+            const toggleSW = document.getElementById('toggle-software');
+            const subtitle = document.querySelector('.page-subtitle');
+
+            if (view === 'hardware') {
+                hwDash.classList.remove('hidden');
+                swDash.classList.add('hidden');
+                toggleHW.classList.add('active');
+                toggleSW.classList.remove('active');
+                if (subtitle) subtitle.innerHTML = `Welcome back, <span id="welcome-user-name" class="text-blue-400 font-medium">${currentUser?.full_name || 'User'}</span>! Here's what's happening with your IT assets.`;
+            } else {
+                hwDash.classList.add('hidden');
+                swDash.classList.remove('hidden');
+                toggleHW.classList.remove('active');
+                toggleSW.classList.add('active');
+                if (subtitle) subtitle.innerHTML = `Welcome back, <span id="welcome-user-name" class="text-blue-400 font-medium">${currentUser?.full_name || 'User'}</span>! Here's an overview of your software licenses.`;
+            }
+
+            // Load data for the active view
+            await loadDashboardData();
+        };
+
+        // =============================================
+        // SOFTWARE DASHBOARD DATA LOADERS
+        // =============================================
+
+        /**
+         * Load software license statistics
+         */
+        async function loadSoftwareStats() {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const monthRange = getMonthDateRange();
+
+                // Base query — filter by created_at when month selected
+                let query = supabase
+                    .from('software_licenses')
+                    .select('id, name, expiry_date, is_active, created_at');
+                query = applyRegionFilter(query);
+                if (monthRange) query = query.gte('created_at', monthRange.startDate).lte('created_at', monthRange.endDate);
+                const { data: allLicenses, error } = await query;
+
+                if (error) {
+                    console.error('Error loading software stats:', error);
+                    return;
+                }
+
+                const list = allLicenses || [];
+
+                // "Expiring" and "Expired" use expiry_date range when month is selected
+                let expiringCount, expiredCount;
+                if (monthRange) {
+                    // When month selected: expiring = expiration falls IN that month
+                    expiringCount = list.filter(l => l.expiry_date && l.expiry_date >= monthRange.startDate && l.expiry_date <= monthRange.endDate).length;
+                    expiredCount = list.filter(l => l.expiry_date && l.expiry_date < today && l.expiry_date <= monthRange.endDate).length;
+                } else {
+                    // Default: expiring within 90 days, expired = past today
+                    const futureDate = new Date();
+                    futureDate.setDate(futureDate.getDate() + 90);
+                    const future90 = futureDate.toISOString().split('T')[0];
+                    expiringCount = list.filter(l => l.expiry_date && l.expiry_date >= today && l.expiry_date <= future90).length;
+                    expiredCount = list.filter(l => l.expiry_date && l.expiry_date < today).length;
+                }
+
+                const total = list.length;
+                const active = list.filter(l => {
+                    if (l.is_active === false) return false;
+                    if (!l.expiry_date) return true; // perpetual
+                    return l.expiry_date >= today;
+                }).length;
+
+                document.getElementById('sw-stat-total').textContent = total;
+                document.getElementById('sw-stat-active').textContent = active;
+                document.getElementById('sw-stat-expiring').textContent = expiringCount;
+                document.getElementById('sw-stat-expired').textContent = expiredCount;
+
+                // Update stat card labels when month filter is active
+                const expiringLabel = document.querySelector('#sw-stat-expiring')?.closest('.stat-card')?.querySelector('.text-yellow-200.text-xs');
+                const expiredLabel = document.querySelector('#sw-stat-expired')?.closest('.stat-card')?.querySelector('.text-red-200.text-xs');
+                if (expiringLabel) expiringLabel.textContent = monthRange ? 'Expiring in this month' : 'Expiring within 90 days';
+                if (expiredLabel) expiredLabel.textContent = monthRange ? 'Expired in this month' : 'Past expiry date';
+            } catch (error) {
+                console.error('Error loading software stats:', error);
+            }
+        }
+
+        /**
+         * Load software charts: status doughnut + category bar
+         */
+        async function loadSoftwareCharts() {
+            try {
+                let query = supabase
+                    .from('software_licenses')
+                    .select('id, name, expiry_date, is_active, cost, region_id, created_at, category:software_categories(name)');
+                query = applyRegionFilter(query);
+                query = applyMonthFilter(query, 'created_at');
+                const { data: licenses, error } = await query;
+
+                if (error) {
+                    console.error('Error loading software chart data:', error);
+                    return;
+                }
+
+                const list = licenses || [];
+                const today = new Date().toISOString().split('T')[0];
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 90);
+                const future90 = futureDate.toISOString().split('T')[0];
+
+                // Classify each license
+                const statusCounts = { active: 0, expiring: 0, expired: 0, perpetual: 0, inactive: 0 };
+                list.forEach(l => {
+                    if (l.is_active === false) {
+                        statusCounts.inactive++;
+                    } else if (!l.expiry_date) {
+                        statusCounts.perpetual++;
+                    } else if (l.expiry_date < today) {
+                        statusCounts.expired++;
+                    } else if (l.expiry_date <= future90) {
+                        statusCounts.expiring++;
+                    } else {
+                        statusCounts.active++;
+                    }
+                });
+
+                // --- Status Doughnut Chart ---
+                const statusColorMap = {
+                    active: '#22c55e',
+                    expiring: '#eab308',
+                    expired: '#ef4444',
+                    perpetual: '#3b82f6',
+                    inactive: '#6b7280'
+                };
+                const statusLabelMap = {
+                    active: 'Active',
+                    expiring: 'Expiring Soon',
+                    expired: 'Expired',
+                    perpetual: 'Perpetual',
+                    inactive: 'Inactive'
+                };
+                const statusOrder = ['active', 'expiring', 'expired', 'perpetual', 'inactive'];
+                const filtered = statusOrder.filter(s => statusCounts[s] > 0);
+                const totalLicenses = filtered.reduce((sum, s) => sum + statusCounts[s], 0);
+
+                if (swStatusChartInstance) { swStatusChartInstance.destroy(); swStatusChartInstance = null; }
+
+                swStatusChartInstance = new Chart(document.getElementById('sw-status-chart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: filtered.map(s => statusLabelMap[s]),
+                        datasets: [{
+                            data: filtered.map(s => statusCounts[s]),
+                            backgroundColor: filtered.map(s => statusColorMap[s]),
+                            borderWidth: 3,
+                            borderColor: '#1e293b',
+                            hoverBorderWidth: 4,
+                            hoverBorderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    color: '#94a3b8',
+                                    padding: 15,
+                                    font: { size: 12 },
+                                    generateLabels: function(chart) {
+                                        const data = chart.data;
+                                        return data.labels.map((label, i) => ({
+                                            text: `${label}: ${data.datasets[0].data[i]}`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            hidden: false,
+                                            index: i
+                                        }));
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleColor: '#fff',
+                                bodyColor: '#94a3b8',
+                                borderColor: '#334155',
+                                borderWidth: 1,
+                                padding: 12
+                            }
+                        }
+                    },
+                    plugins: [{
+                        id: 'swCenterText',
+                        beforeDraw: function(chart) {
+                            const ctx = chart.ctx;
+                            const chartArea = chart.chartArea;
+                            const centerX = (chartArea.left + chartArea.right) / 2;
+                            const centerY = (chartArea.top + chartArea.bottom) / 2;
+                            ctx.restore();
+                            const fontSize = ((chartArea.bottom - chartArea.top) / 114).toFixed(2);
+                            ctx.font = fontSize + "em sans-serif";
+                            ctx.textBaseline = "middle";
+                            ctx.textAlign = "center";
+                            ctx.fillStyle = "#fff";
+                            ctx.fillText(totalLicenses.toString(), centerX, centerY - 10);
+                            ctx.font = (fontSize / 2) + "em sans-serif";
+                            ctx.fillStyle = "#94a3b8";
+                            ctx.fillText("Total Licenses", centerX, centerY + 20);
+                            ctx.save();
+                        }
+                    }]
+                });
+
+                // --- Category Bar Chart (stacked by region when all regions, single otherwise) ---
+                if (swCategoryChartInstance) { swCategoryChartInstance.destroy(); swCategoryChartInstance = null; }
+
+                // Region colour palette
+                const regionColorPalette = {
+                    'PH': '#06b6d4', 'ID': '#f97316', 'CN': '#ef4444', 'US': '#3b82f6'
+                };
+                function getSwRegionColor(regionId) {
+                    const code = regionsMap[regionId]?.code || '';
+                    return regionColorPalette[code] || '#8b5cf6';
+                }
+
+                let swCatData, swCatOptions;
+
+                if (!selectedRegionId) {
+                    // ALL REGIONS: stacked bar
+                    const allCats = new Set();
+                    const allRids = new Set();
+                    list.forEach(l => {
+                        allCats.add(l.category?.name || 'Uncategorized');
+                        if (l.region_id) allRids.add(l.region_id);
+                    });
+                    const sortedCats = [...allCats].sort();
+                    const sortedRids = [...allRids].sort((a, b) => (regionsMap[a]?.name || a).localeCompare(regionsMap[b]?.name || b));
+                    const matrix = {};
+                    sortedRids.forEach(r => { matrix[r] = {}; sortedCats.forEach(c => { matrix[r][c] = 0; }); });
+                    list.forEach(l => {
+                        const cat = l.category?.name || 'Uncategorized';
+                        if (l.region_id && matrix[l.region_id]) matrix[l.region_id][cat]++;
+                    });
+                    const datasets = sortedRids.map(rid => ({
+                        label: regionsMap[rid]?.name || `Region ${rid}`,
+                        data: sortedCats.map(c => matrix[rid][c]),
+                        backgroundColor: getSwRegionColor(rid),
+                        borderColor: getSwRegionColor(rid),
+                        borderRadius: 2
+                    }));
+                    swCatData = { labels: sortedCats, datasets };
+                    swCatOptions = {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { color: '#94a3b8', padding: 8, font: { size: 9 }, boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'rect' } },
+                            tooltip: { backgroundColor: '#1e293b', titleColor: '#fff', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1, padding: 12 }
+                        },
+                        scales: {
+                            x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { display: false } },
+                            y: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                        }
+                    };
+                } else {
+                    // SINGLE REGION: simple bar
+                    const catCounts = {};
+                    list.forEach(l => {
+                        const cat = l.category?.name || 'Uncategorized';
+                        catCounts[cat] = (catCounts[cat] || 0) + 1;
+                    });
+                    const regionColor = getSwRegionColor(selectedRegionId);
+                    swCatData = {
+                        labels: Object.keys(catCounts),
+                        datasets: [{ label: regionsMap[selectedRegionId]?.name || 'Licenses', data: Object.values(catCounts), backgroundColor: regionColor, borderRadius: 4 }]
+                    };
+                    swCatOptions = {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e293b', titleColor: '#fff', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1, padding: 12 } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                        }
+                    };
+                }
+
+                swCategoryChartInstance = new Chart(document.getElementById('sw-category-chart'), {
+                    type: 'bar', data: swCatData, options: swCatOptions
+                });
+
+            } catch (error) {
+                console.error('Error loading software charts:', error);
+            }
+        }
+
+        /**
+         * Load software license expiry timeline — next 12 months
+         */
+        async function loadSoftwareExpiryTrends() {
+            try {
+                const today = new Date();
+                const twelveMonthsLater = new Date();
+                twelveMonthsLater.setMonth(twelveMonthsLater.getMonth() + 12);
+
+                let query = supabase
+                    .from('software_licenses')
+                    .select('expiry_date, region_id')
+                    .gte('expiry_date', today.toISOString().split('T')[0])
+                    .lte('expiry_date', twelveMonthsLater.toISOString().split('T')[0]);
+                query = applyRegionFilter(query);
+                const { data: licenses, error } = await query;
+
+                if (error) {
+                    console.error('Error loading expiry trends:', error);
+                    return;
+                }
+
+                // Build monthly counts for next 12 months
+                const months = [];
+                const monthKeys = [];
+                const expiryCounts = {};
+
+                for (let i = 0; i < 12; i++) {
+                    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                    months.push(label);
+                    monthKeys.push(key);
+                    expiryCounts[key] = 0;
+                }
+
+                (licenses || []).forEach(l => {
+                    if (!l.expiry_date) return;
+                    const d = new Date(l.expiry_date);
+                    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    if (expiryCounts.hasOwnProperty(key)) expiryCounts[key]++;
+                });
+
+                const values = monthKeys.map(k => expiryCounts[k]);
+
+                const canvas = document.getElementById('sw-expiry-chart');
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+                gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
+                gradient.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
+
+                if (swExpiryChartInstance) { swExpiryChartInstance.destroy(); swExpiryChartInstance = null; }
+
+                swExpiryChartInstance = new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: months,
+                        datasets: [{
+                            label: 'Licenses Expiring',
+                            data: values,
+                            backgroundColor: values.map(v => v > 3 ? 'rgba(239, 68, 68, 0.7)' : v > 0 ? 'rgba(234, 179, 8, 0.7)' : 'rgba(59, 130, 246, 0.3)'),
+                            borderColor: values.map(v => v > 3 ? '#ef4444' : v > 0 ? '#eab308' : '#3b82f6'),
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleColor: '#fff',
+                                bodyColor: '#94a3b8',
+                                borderColor: '#334155',
+                                borderWidth: 1,
+                                padding: 12,
+                                callbacks: {
+                                    label: ctx => ` ${ctx.parsed.y} license(s) expiring`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8', maxRotation: 45 }, grid: { display: false } },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#94a3b8', stepSize: 1 },
+                                grid: { color: '#334155' }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading software expiry trends:', error);
+            }
+        }
+
+        /**
+         * Load software alerts: expiring soon, expired, inactive
+         */
+        async function loadSoftwareAlerts() {
+            const alerts = [];
+            const container = document.getElementById('sw-alerts-list');
+
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 90);
+                const future90 = futureDate.toISOString().split('T')[0];
+
+                let query = supabase
+                    .from('software_licenses')
+                    .select('id, name, expiry_date, is_active');
+                query = applyRegionFilter(query);
+                const { data: licenses } = await query;
+
+                const list = licenses || [];
+                const expiring = list.filter(l => l.expiry_date && l.expiry_date >= today && l.expiry_date <= future90);
+                const expired = list.filter(l => l.expiry_date && l.expiry_date < today);
+                const inactive = list.filter(l => l.is_active === false);
+
+                if (expiring.length) {
+                    alerts.push({
+                        type: 'warning',
+                        title: 'Licenses Expiring Soon',
+                        message: `${expiring.length} license(s) expiring within 90 days`,
+                        icon: 'shield'
+                    });
+                }
+                if (expired.length) {
+                    alerts.push({
+                        type: 'error',
+                        title: 'Expired Licenses',
+                        message: `${expired.length} license(s) have expired and need renewal`,
+                        icon: 'alert'
+                    });
+                }
+                if (inactive.length) {
+                    alerts.push({
+                        type: 'info',
+                        title: 'Inactive Licenses',
+                        message: `${inactive.length} license(s) are marked as inactive`,
+                        icon: 'tool'
+                    });
+                }
+
+                // Check for 30-day critical expiry
+                const future30 = new Date();
+                future30.setDate(future30.getDate() + 30);
+                const future30str = future30.toISOString().split('T')[0];
+                const critical = list.filter(l => l.expiry_date && l.expiry_date >= today && l.expiry_date <= future30str);
+                if (critical.length) {
+                    alerts.push({
+                        type: 'error',
+                        title: 'Critical: Expiring in 30 Days',
+                        message: `${critical.length} license(s) expiring within 30 days — immediate action required`,
+                        icon: 'alert'
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading software alerts:', error);
+            }
+
+            if (!alerts.length) {
+                container.innerHTML = `
+                    <div class="p-4 text-center text-slate-400">
+                        <svg class="w-12 h-12 mx-auto mb-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-green-400">All clear!</p>
+                        <p class="text-xs">No software alerts at this time</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const alertIcons = {
+                shield: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>`,
+                tool: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>`,
+                alert: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>`
+            };
+            const alertColors = {
+                warning: 'text-yellow-400 bg-yellow-500/20',
+                info: 'text-blue-400 bg-blue-500/20',
+                error: 'text-red-400 bg-red-500/20'
+            };
+
+            container.innerHTML = alerts.map(alert => `
+                <div class="p-4 hover:bg-slate-700/50">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full ${alertColors[alert.type]} flex items-center justify-center flex-shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                ${alertIcons[alert.icon]}
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-white">${alert.title}</p>
+                            <p class="text-xs text-slate-400 mt-1">${alert.message}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * Load software license health matrix by category
+         */
+        async function loadSoftwareHeatmap() {
+            try {
+                let query = supabase
+                    .from('software_licenses')
+                    .select('id, name, expiry_date, is_active, cost, created_at, category:software_categories(name)');
+                query = applyRegionFilter(query);
+                query = applyMonthFilter(query, 'created_at');
+                const { data: licenses, error } = await query;
+
+                if (error) {
+                    console.error('Error loading software heatmap:', error);
+                    return;
+                }
+
+                const list = licenses || [];
+                const today = new Date().toISOString().split('T')[0];
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 90);
+                const future90 = futureDate.toISOString().split('T')[0];
+
+                // Build category matrix
+                const catMatrix = {};
+                list.forEach(l => {
+                    const cat = l.category?.name || 'Uncategorized';
+                    if (!catMatrix[cat]) {
+                        catMatrix[cat] = { active: 0, expiring: 0, expired: 0, perpetual: 0, inactive: 0, total: 0 };
+                    }
+                    catMatrix[cat].total++;
+                    if (l.is_active === false) {
+                        catMatrix[cat].inactive++;
+                    } else if (!l.expiry_date) {
+                        catMatrix[cat].perpetual++;
+                    } else if (l.expiry_date < today) {
+                        catMatrix[cat].expired++;
+                    } else if (l.expiry_date <= future90) {
+                        catMatrix[cat].expiring++;
+                    } else {
+                        catMatrix[cat].active++;
+                    }
+                });
+
+                // Calculate health
+                const healthData = Object.entries(catMatrix).map(([category, stats]) => {
+                    let healthStatus = 'healthy';
+                    let healthColor = 'bg-green-500/20 text-green-400';
+                    let healthIcon = '✓';
+                    let warnings = [];
+
+                    const expiredRate = stats.total > 0 ? (stats.expired / stats.total * 100) : 0;
+                    const expiringRate = stats.total > 0 ? (stats.expiring / stats.total * 100) : 0;
+
+                    if (stats.expired > 0) {
+                        warnings.push(`${stats.expired} expired`);
+                        healthStatus = 'critical';
+                    }
+                    if (expiringRate > 30) {
+                        warnings.push('High expiry rate');
+                        if (healthStatus !== 'critical') healthStatus = 'warning';
+                    }
+                    if (stats.expiring > 0 && healthStatus === 'healthy') {
+                        warnings.push(`${stats.expiring} expiring soon`);
+                        healthStatus = 'warning';
+                    }
+
+                    if (healthStatus === 'critical') {
+                        healthColor = 'bg-red-500/20 text-red-400';
+                        healthIcon = '⚠';
+                    } else if (healthStatus === 'warning') {
+                        healthColor = 'bg-yellow-500/20 text-yellow-400';
+                        healthIcon = '!';
+                    }
+
+                    return {
+                        category, ...stats,
+                        healthStatus, healthColor, healthIcon,
+                        warnings: warnings.join(', ') || 'All licenses healthy'
+                    };
+                });
+
+                // Sort: critical first, then warning, then healthy
+                healthData.sort((a, b) => {
+                    const order = { critical: 0, warning: 1, healthy: 2 };
+                    if (a.healthStatus === b.healthStatus) return a.category.localeCompare(b.category);
+                    return order[a.healthStatus] - order[b.healthStatus];
+                });
+
+                renderSoftwareHeatmap(healthData);
+            } catch (error) {
+                console.error('Error loading software heatmap:', error);
+            }
+        }
+
+        /**
+         * Render the software license heatmap table
+         */
+        function renderSoftwareHeatmap(data) {
+            const container = document.getElementById('sw-heatmap-container');
+
+            if (!data || !data.length) {
+                container.innerHTML = '<div class="text-center text-slate-400 py-8">No software license data available</div>';
+                return;
+            }
+
+            const getCellColor = (value, max) => {
+                if (value === 0) return 'bg-slate-800 text-slate-500';
+                const intensity = max > 0 ? (value / max) : 0;
+                if (intensity > 0.7) return 'bg-blue-500/40 text-blue-200';
+                if (intensity > 0.4) return 'bg-blue-500/25 text-blue-300';
+                return 'bg-blue-500/10 text-blue-400';
+            };
+
+            const maxActive = Math.max(...data.map(d => d.active), 1);
+            const maxExpiring = Math.max(...data.map(d => d.expiring), 1);
+            const maxExpired = Math.max(...data.map(d => d.expired), 1);
+            const maxPerpetual = Math.max(...data.map(d => d.perpetual), 1);
+            const maxInactive = Math.max(...data.map(d => d.inactive), 1);
+
+            const html = `
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-700">
+                            <th class="text-left py-3 px-4 text-slate-400 font-medium">Category</th>
+                            <th class="text-center py-3 px-4 text-slate-400 font-medium">Active</th>
+                            <th class="text-center py-3 px-4 text-slate-400 font-medium">Expiring</th>
+                            <th class="text-center py-3 px-4 text-slate-400 font-medium">Expired</th>
+                            <th class="text-center py-3 px-4 text-slate-400 font-medium">Perpetual</th>
+                            <th class="text-center py-3 px-4 text-slate-400 font-medium">Inactive</th>
+                            <th class="text-center py-3 px-4 text-slate-400 font-medium">Total</th>
+                            <th class="text-center py-3 px-4 text-slate-400 font-medium">Health</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.map(row => `
+                            <tr class="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                                <td class="py-3 px-4 font-medium text-slate-200">${row.category}</td>
+                                <td class="text-center py-2 px-2">
+                                    <div class="inline-block px-3 py-2 rounded ${getCellColor(row.active, maxActive)} min-w-[60px]">${row.active}</div>
+                                </td>
+                                <td class="text-center py-2 px-2">
+                                    <div class="inline-block px-3 py-2 rounded ${row.expiring > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-slate-800 text-slate-500'} min-w-[60px]">${row.expiring}</div>
+                                </td>
+                                <td class="text-center py-2 px-2">
+                                    <div class="inline-block px-3 py-2 rounded ${row.expired > 0 ? 'bg-red-500/20 text-red-400' : 'bg-slate-800 text-slate-500'} min-w-[60px]">${row.expired}</div>
+                                </td>
+                                <td class="text-center py-2 px-2">
+                                    <div class="inline-block px-3 py-2 rounded ${getCellColor(row.perpetual, maxPerpetual)} min-w-[60px]">${row.perpetual}</div>
+                                </td>
+                                <td class="text-center py-2 px-2">
+                                    <div class="inline-block px-3 py-2 rounded ${getCellColor(row.inactive, maxInactive)} min-w-[60px]">${row.inactive}</div>
+                                </td>
+                                <td class="text-center py-3 px-4 font-semibold text-slate-300">${row.total}</td>
+                                <td class="text-center py-2 px-2">
+                                    <div class="inline-flex items-center gap-2 px-3 py-2 rounded ${row.healthColor} min-w-[100px] justify-center" title="${row.warnings}">
+                                        <span class="text-lg">${row.healthIcon}</span>
+                                        <span class="text-xs uppercase font-semibold">${row.healthStatus}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div class="mt-4 flex gap-6 text-xs text-slate-400 border-t border-slate-700 pt-4">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-4 h-4 rounded bg-green-500/20"></span>
+                        <span>Healthy - All licenses current</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-4 h-4 rounded bg-yellow-500/20"></span>
+                        <span>Warning - Licenses expiring soon</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-4 h-4 rounded bg-red-500/20"></span>
+                        <span>Critical - Expired licenses present</span>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
         }
 
         // =============================================

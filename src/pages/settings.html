@@ -1006,6 +1006,26 @@
                 const { data: category } = await supabase.from('software_categories').select('*').eq('id', id).single();
                 if (!category) throw new Error('Software product not found');
 
+                // If deactivating, check that no active licenses exist under this product
+                if (!activate) {
+                    const { data: activeLicenses, error: checkError } = await supabase
+                        .from('software_licenses')
+                        .select('id')
+                        .eq('category_id', id)
+                        .eq('is_active', true);
+
+                    if (checkError) throw checkError;
+
+                    if (activeLicenses && activeLicenses.length > 0) {
+                        showToast(
+                            `Cannot deactivate "${category.name}". It still has ${activeLicenses.length} active license(s). All licenses must be deactivated first.`,
+                            'error',
+                            8000
+                        );
+                        return;
+                    }
+                }
+
                 const { error } = await supabase
                     .from('software_categories')
                     .update({ is_active: activate })
@@ -1036,6 +1056,34 @@
                 // Get category info for audit log
                 const { data: category } = await supabase.from('asset_categories').select('*').eq('id', id).single();
                 if (!category) throw new Error('Category not found');
+
+                // If deactivating, check that no assets in this category are still active
+                if (!activate) {
+                    const { data: activeAssets, error: checkError } = await supabase
+                        .from('assets')
+                        .select('id, status', { count: 'exact' })
+                        .eq('category_id', id)
+                        .in('status', ['available', 'assigned', 'under_repair', 'damaged', 'lost']);
+
+                    if (checkError) throw checkError;
+
+                    if (activeAssets && activeAssets.length > 0) {
+                        // Count by status for a helpful message
+                        const counts = activeAssets.reduce((acc, a) => {
+                            acc[a.status] = (acc[a.status] || 0) + 1;
+                            return acc;
+                        }, {});
+                        const details = Object.entries(counts)
+                            .map(([s, n]) => `${n} ${s.replace('_', ' ')}`)
+                            .join(', ');
+                        showToast(
+                            `Cannot deactivate "${category.name}". ${activeAssets.length} asset(s) still active: ${details}. All assets must be decommissioned first.`,
+                            'error',
+                            8000
+                        );
+                        return;
+                    }
+                }
 
                 const { error } = await supabase
                     .from('asset_categories')

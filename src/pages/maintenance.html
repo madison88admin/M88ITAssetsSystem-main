@@ -205,7 +205,13 @@
             </div>
             <form id="maintenance-form" onsubmit="handleSubmit(event)">
                 <input type="hidden" id="record-id">
+                <input type="hidden" id="original-status">
                 <div class="modal-body space-y-4">
+                    <!-- Notice shown when editing a completed/cannot_repair record -->
+                    <div id="completed-edit-notice" class="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-300">
+                        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>This record is <strong>completed</strong>. Only <strong>Issue Description</strong>, <strong>Resolution</strong>, <strong>Cost</strong>, and <strong>Performed By</strong> can be edited. Status cannot be changed.</span>
+                    </div>
                     <div class="form-group">
                         <label class="form-label" for="maint-asset">Asset *</label>
                         <select id="maint-asset" class="form-select" required></select>
@@ -604,6 +610,8 @@
             // Reset form first
             document.getElementById('maintenance-form').reset();
             document.getElementById('record-id').value = '';
+            document.getElementById('original-status').value = '';
+            document.getElementById('completed-edit-notice').classList.add('hidden');
             
             // Refresh asset dropdown to exclude newly logged assets
             await loadAssetOptions();
@@ -648,8 +656,10 @@
         window.openMaintenanceModal = async () => {
             document.getElementById('maintenance-form').reset();
             document.getElementById('record-id').value = '';
+            document.getElementById('original-status').value = '';
             document.getElementById('maint-start').value = new Date().toISOString().split('T')[0];
             document.getElementById('modal-title').textContent = 'Log Maintenance';
+            document.getElementById('completed-edit-notice').classList.add('hidden');
             // Re-enable all fields (may have been disabled by a previous edit)
             document.querySelectorAll('#maintenance-form input, #maintenance-form select, #maintenance-form textarea').forEach(el => {
                 el.disabled = false;
@@ -701,6 +711,20 @@
             document.getElementById('maint-asset').disabled = true;
             document.getElementById('maint-type').disabled = true;
             document.getElementById('maint-start').disabled = true;
+
+            // Store original status for save logic
+            document.getElementById('original-status').value = record.status;
+
+            // For completed/cannot_repair records: lock status, completed date, and asset fields.
+            // Admin/exec-admin can only edit Issue Description, Resolution, Cost, Performed By.
+            const isCompletedRecord = record.status === 'completed' || record.status === 'cannot_repair';
+            if (isCompletedRecord) {
+                document.getElementById('maint-status').disabled = true;
+                document.getElementById('maint-completed').disabled = true;
+                document.getElementById('completed-edit-notice').classList.remove('hidden');
+            } else {
+                document.getElementById('completed-edit-notice').classList.add('hidden');
+            }
             
             document.getElementById('maintenance-modal').classList.remove('hidden');
         };
@@ -735,6 +759,7 @@
             document.getElementById('maint-performed').value = record.performed_by || '';
             document.getElementById('modal-title').textContent = 'View Maintenance Record (Read Only)';
             document.getElementById('save-btn').style.display = 'none';
+            document.getElementById('completed-edit-notice').classList.add('hidden');
             
             // Disable all fields
             document.querySelectorAll('#maintenance-form input, #maintenance-form select, #maintenance-form textarea').forEach(el => {
@@ -817,8 +842,12 @@
             // Handle form submission with loading state
             await Utils.handleFormSubmit(submitBtn, async () => {
                 if (id) {
-                    // If changing status to completed, use complete method
-                    if (status === 'completed') {
+                    // Detect whether this is a new completion or editing an already-completed record
+                    const originalStatus = document.getElementById('original-status').value;
+                    const wasAlreadyCompleted = originalStatus === 'completed' || originalStatus === 'cannot_repair';
+
+                    // If changing status to completed for the first time, use complete method
+                    if (status === 'completed' && !wasAlreadyCompleted) {
                         const result = await Maintenance.complete(id, {
                             endDate: data.completed_date,
                             cost: data.cost,
@@ -841,8 +870,8 @@
                         showToast('Record updated', 'success');
                     }
                     
-                    // If status changed to cannot_repair, update asset status to damaged
-                    if (status === 'cannot_repair' && assetId) {
+                    // If status changed to cannot_repair (first time), update asset status to damaged
+                    if (status === 'cannot_repair' && assetId && !wasAlreadyCompleted) {
                         const { error: assetError } = await supabase
                             .from('assets')
                             .update({ status: 'damaged' })

@@ -1492,6 +1492,49 @@ body {
 }
 
 /* =============================================
+   DASHBOARD HARDWARE / SOFTWARE TOGGLE
+   ============================================= */
+.dashboard-toggle {
+    display: inline-flex;
+    background: var(--slate-800);
+    border: 1px solid var(--slate-700);
+    border-radius: 0.5rem;
+    padding: 3px;
+    gap: 2px;
+}
+
+.dashboard-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--slate-400);
+    background: transparent;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.dashboard-toggle-btn:hover {
+    color: var(--slate-200);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dashboard-toggle-btn.active {
+    color: #fff;
+    background: var(--blue-600);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.dashboard-toggle-btn svg {
+    flex-shrink: 0;
+}
+
+/* =============================================
    EXECUTIVE FINANCIAL CAROUSEL
    ============================================= */
 .exec-carousel {
@@ -1577,5 +1620,204 @@ body {
         grid-template-columns: 27% 43% 27%;
         gap: 0;
         column-gap: 1.5rem;
+    }
+}
+
+/* ===========================================
+   PRINT STYLES
+   Forces chart/graph backgrounds to remain
+   dark so their content stays readable.
+   Everything else uses a white background
+   to save ink.
+   =========================================== */
+@media print {
+    /* Force browser to print background colours/images */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* ── Hide non-content chrome ── */
+    .sidebar,
+    #sidebar-overlay,
+    #loading-screen,
+    #toast-container,
+    .topbar .btn,
+    #menu-toggle,
+    #notification-bell-wrapper,
+    #region-selector,
+    .dropdown,
+    .modal-overlay,
+    .btn,
+    button:not(.print-keep),
+    [onclick="handleLogout()"],
+    .exec-slide-dot,
+    #exec-prev-btn,
+    #exec-next-btn {
+        display: none !important;
+    }
+
+    /* ── Reset page layout so content fills the sheet ── */
+    html, body {
+        background: #ffffff !important;
+        color: #111827 !important;
+        font-size: 11pt;
+    }
+
+    .app-layout {
+        display: block !important;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        width: 100% !important;
+    }
+
+    .topbar {
+        display: none !important;
+    }
+
+    .page-content {
+        padding: 0.5rem !important;
+    }
+
+    /* ── General cards: white background, visible border ── */
+    .card {
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #111827 !important;
+        break-inside: avoid;
+    }
+
+    .card-header {
+        border-bottom: 1px solid #cbd5e1 !important;
+    }
+
+    .card-title {
+        color: #111827 !important;
+    }
+
+    /* ── Stat cards: keep their gradient / coloured backgrounds ── */
+    .stat-card {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        break-inside: avoid;
+    }
+
+    /* ── Chart wrapper cards: give them a dark background so
+          Chart.js canvas content stays fully visible ── */
+    .card:has(.chart-container),
+    .card:has(canvas) {
+        background-color: #1e293b !important;  /* slate-800 */
+        border: 1px solid #334155 !important;  /* slate-700 */
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .card:has(.chart-container) .card-header,
+    .card:has(canvas) .card-header {
+        border-bottom: 1px solid #334155 !important;
+    }
+
+    .card:has(.chart-container) .card-title,
+    .card:has(canvas) .card-title,
+    .card:has(.chart-container) .card-subtitle,
+    .card:has(canvas) .card-subtitle {
+        color: #ffffff !important;
+    }
+
+    /* ── Heatmap card: keep dark background ── */
+    .card:has(#heatmap-container) {
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .card:has(#heatmap-container) .card-title {
+        color: #ffffff !important;
+    }
+
+    /* Heatmap table & cells – keep the colored cell backgrounds */
+    #heatmap-container table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #heatmap-container th {
+        color: #94a3b8 !important;
+        font-size: 9pt;
+    }
+
+    #heatmap-container td {
+        font-size: 9pt;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* ── Executive summary panel: dark background ── */
+    #exec-summary-panel {
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color: #ffffff !important;
+    }
+
+    #exec-summary-panel .card-title,
+    #exec-summary-panel * {
+        color: inherit !important;
+    }
+
+    /* ── Alerts & Reminders card: keep readable ── */
+    #alerts-list .p-4 {
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+
+    /* ── Tables: make sure they are readable on white ── */
+    .table th {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .table td {
+        color: #111827 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+
+    .table tr:nth-child(even) td {
+        background-color: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* ── Page header text ── */
+    .page-title, .page-subtitle {
+        color: #111827 !important;
+    }
+
+    /* ── Status / badge colours: keep them ── */
+    .badge, [class*="badge-"],
+    [class*="bg-green-"], [class*="bg-blue-"],
+    [class*="bg-yellow-"], [class*="bg-red-"],
+    [class*="bg-gray-"], [class*="bg-slate-"] {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* ── Grid layout: allow multi-column on print ── */
+    .grid {
+        display: grid !important;
+    }
+
+    /* ── Avoid awkward page breaks inside cards ── */
+    .stat-card,
+    .card,
+    tr {
+        break-inside: avoid;
     }
 }
