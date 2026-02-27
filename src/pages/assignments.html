@@ -249,7 +249,7 @@
                         <label class="form-label" for="return-condition">Return Condition</label>
                         <select id="return-condition" class="form-select">
                             <option value="available">Good - Available for reassignment</option>
-                            <option value="under_repair">Needs Repair</option>
+                            <!-- <option value="under_repair">Needs Repair</option> -->
                             <option value="damaged">Damaged</option>
                         </select>
                     </div>
@@ -1264,6 +1264,42 @@
             }, 500);
         };
 
+        // ===========================================
+        // MULTI-ASSIGN TOGGLE HELPERS (Assign Modal)
+        // ===========================================
+        window.toggleAmMultiAssign = (toggle) => {
+            const catId = toggle.dataset.cat;
+            const panel = document.getElementById(`am-multi-assets-${catId}`);
+            const catCb = document.querySelector(`.am-hw-cb[value="${catId}"]`);
+
+            if (toggle.checked) {
+                if (panel) panel.classList.remove('hidden');
+                if (catCb && !catCb.checked) catCb.checked = true;
+            } else {
+                if (panel) panel.classList.add('hidden');
+                if (panel) {
+                    panel.querySelectorAll('.am-multi-asset-cb[data-type="available"]').forEach(cb => cb.checked = false);
+                }
+            }
+        };
+
+        window.onAmHwCbChange = (checkbox) => {
+            const catId = checkbox.value;
+            const allowMulti = checkbox.dataset.allowMulti === 'true';
+            if (!allowMulti) return;
+
+            const multiToggle = document.getElementById(`am-multi-toggle-${catId}`);
+            const panel = document.getElementById(`am-multi-assets-${catId}`);
+
+            if (!checkbox.checked) {
+                if (multiToggle) multiToggle.checked = false;
+                if (panel) {
+                    panel.classList.add('hidden');
+                    panel.querySelectorAll('.am-multi-asset-cb[data-type="available"]').forEach(cb => cb.checked = false);
+                }
+            }
+        };
+
         // Toggle visibility of software license detail fields in Assign Modal
         window.toggleAmSwDetailFields = (checkbox) => {
             const catId = checkbox.value;
@@ -1379,7 +1415,7 @@
                 // ========== HARDWARE SECTION ==========
                 const { data: hwCats } = await supabase
                     .from('asset_categories')
-                    .select('id, name')
+                    .select('id, name, allow_multiple_assignment')
                     .eq('is_active', true)
                     .order('name');
 
@@ -1402,6 +1438,7 @@
                         if (!amHwAssignmentMap[a.asset.category_id]) amHwAssignmentMap[a.asset.category_id] = [];
                         amHwAssignmentMap[a.asset.category_id].push({
                             assignment_id: a.id,
+                            asset_id: a.asset.id,
                             asset_tag: a.asset.asset_tag,
                             asset_name: a.asset.name || a.asset.serial_number
                         });
@@ -1429,6 +1466,8 @@
                         const availableList = availableByCategory[c.id] || [];
                         const availableCount = availableList.length;
                         const isUnavailable = !isAssigned && availableCount === 0;
+                        const allowMulti = c.allow_multiple_assignment === true;
+                        const hasMultipleAssigned = assignments.length > 1;
 
                         let statusHtml = '';
                         if (isAssigned) {
@@ -1441,17 +1480,74 @@
                             statusHtml = `<span class="text-xs text-red-400">\u2717 None available</span>`;
                         }
 
+                        // Multi-assign toggle (only for categories with allow_multiple_assignment)
+                        const showMultiToggle = allowMulti && (availableCount > 0 || isAssigned);
+                        const multiToggleDisabled = availableCount <= 1 && !hasMultipleAssigned;
+                        const multiToggleChecked = hasMultipleAssigned;
+                        const multiToggleTitle = multiToggleDisabled
+                            ? 'Only 1 asset available for assignment'
+                            : 'Toggle to assign multiple assets of this category';
+                        let multiToggleHtml = '';
+                        if (showMultiToggle) {
+                            multiToggleHtml = `
+                                <div class="multi-assign-toggle" title="${multiToggleTitle}">
+                                    <input type="checkbox" id="am-multi-toggle-${c.id}"
+                                        class="am-multi-assign-cb"
+                                        data-cat="${c.id}"
+                                        ${multiToggleChecked ? 'checked' : ''}
+                                        ${multiToggleDisabled ? 'disabled' : ''}
+                                        onchange="toggleAmMultiAssign(this)">
+                                    <label class="toggle-slider" for="am-multi-toggle-${c.id}"></label>
+                                    <span class="toggle-label">Multi</span>
+                                </div>
+                            `;
+                        }
+
+                        // Multi-assign asset picker
+                        let multiAssetsHtml = '';
+                        if (allowMulti && (availableCount > 0 || isAssigned)) {
+                            const assetRows = [
+                                ...assignments.map(a => `
+                                    <label class="assigned">
+                                        <input type="checkbox" class="am-multi-asset-cb rounded border-slate-600 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0"
+                                            data-cat="${c.id}" value="${a.assignment_id}" data-type="assigned"
+                                            data-tag="${a.asset_tag || ''}" data-name="${a.asset_name || ''}" checked>
+                                        <span>\u2713 ${a.asset_name || a.asset_tag}</span>
+                                        <span class="asset-tag">${a.asset_tag || ''}</span>
+                                    </label>
+                                `),
+                                ...availableList.map(a => `
+                                    <label>
+                                        <input type="checkbox" class="am-multi-asset-cb rounded border-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                                            data-cat="${c.id}" value="${a.id}" data-type="available"
+                                            data-tag="${a.asset_tag || ''}" data-name="${a.name || ''}">
+                                        <span>${a.name || 'Unnamed'}</span>
+                                        <span class="asset-tag">${a.asset_tag || ''}</span>
+                                    </label>
+                                `)
+                            ].join('');
+                            multiAssetsHtml = `<div id="am-multi-assets-${c.id}" class="multi-assign-assets ${multiToggleChecked ? '' : 'hidden'}">${assetRows}</div>`;
+                        }
+
                         return `
-                            <div class="flex items-center justify-between p-1.5 rounded ${isUnavailable ? 'opacity-50' : 'hover:bg-slate-700'}">
-                                <label class="flex items-center gap-2 ${isUnavailable ? 'cursor-not-allowed' : 'cursor-pointer'} text-sm flex-shrink-0">
-                                    <input type="checkbox" class="am-hw-cb rounded border-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
-                                        value="${c.id}"
-                                        data-name="${c.name}"
-                                        ${isAssigned ? 'checked' : ''}
-                                        ${isUnavailable ? 'disabled' : ''}>
-                                    <span class="text-slate-300">${c.name}</span>
-                                </label>
-                                ${statusHtml}
+                            <div class="rounded ${isUnavailable ? 'opacity-50' : ''}">
+                                <div class="flex items-center justify-between p-1.5 rounded ${isUnavailable ? '' : 'hover:bg-slate-700'}">
+                                    <label class="flex items-center gap-2 ${isUnavailable ? 'cursor-not-allowed' : 'cursor-pointer'} text-sm flex-shrink-0">
+                                        <input type="checkbox" class="am-hw-cb rounded border-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                                            value="${c.id}"
+                                            data-name="${c.name}"
+                                            data-allow-multi="${allowMulti}"
+                                            ${isAssigned ? 'checked' : ''}
+                                            ${isUnavailable ? 'disabled' : ''}
+                                            onchange="onAmHwCbChange(this)">
+                                        <span class="text-slate-300">${c.name}</span>
+                                    </label>
+                                    <div class="flex items-center gap-2">
+                                        ${statusHtml}
+                                        ${multiToggleHtml}
+                                    </div>
+                                </div>
+                                ${multiAssetsHtml}
                             </div>
                         `;
                     }).join('');
@@ -1622,16 +1718,78 @@
                 for (const catId of currentHWChecked) {
                     if (amInitialHWChecked.has(catId)) continue;
                     const catName = document.querySelector(`.am-hw-cb[value="${catId}"]`)?.dataset.name || 'Unknown';
-                    let assetQuery = supabase.from('assets').select('id, asset_tag, name').eq('category_id', catId).eq('status', 'available').limit(1);
-                    if (regionId) assetQuery = assetQuery.eq('region_id', regionId);
-                    const { data: availAssets } = await assetQuery;
-                    if (availAssets && availAssets.length > 0) {
-                        const asset = availAssets[0];
-                        const result = await Assignments.assign({ assetId: asset.id, employeeId: amEmployeeId, notes: 'Assigned via Assign Assets modal', assignedBy: currentUser.id });
-                        if (result.success) messages.assigned.push(`${catName} (${asset.asset_tag || asset.name})`);
-                        else messages.errors.push(`${catName}: ${result.error}`);
+
+                    // Check if multi-assign toggle is ON for this category
+                    const multiToggle = document.getElementById(`am-multi-toggle-${catId}`);
+                    const isMultiAssign = multiToggle && multiToggle.checked;
+
+                    if (isMultiAssign) {
+                        // Multi-assign: assign all selected assets from the picker
+                        const selectedAssets = Array.from(
+                            document.querySelectorAll(`#am-multi-assets-${catId} .am-multi-asset-cb[data-type="available"]:checked`)
+                        );
+                        if (selectedAssets.length === 0) {
+                            messages.noStock.push(catName);
+                            continue;
+                        }
+                        for (const cb of selectedAssets) {
+                            const assetId = cb.value;
+                            const assetTag = cb.dataset.tag || '';
+                            const assetName = cb.dataset.name || '';
+                            const result = await Assignments.assign({ assetId, employeeId: amEmployeeId, notes: 'Multi-assigned via Assign Assets modal', assignedBy: currentUser.id });
+                            if (result.success) messages.assigned.push(`${catName} (${assetTag || assetName})`);
+                            else messages.errors.push(`${catName}: ${result.error}`);
+                        }
                     } else {
-                        messages.noStock.push(catName);
+                        // Single assign: find first available
+                        let assetQuery = supabase.from('assets').select('id, asset_tag, name').eq('category_id', catId).eq('status', 'available').limit(1);
+                        if (regionId) assetQuery = assetQuery.eq('region_id', regionId);
+                        const { data: availAssets } = await assetQuery;
+                        if (availAssets && availAssets.length > 0) {
+                            const asset = availAssets[0];
+                            const result = await Assignments.assign({ assetId: asset.id, employeeId: amEmployeeId, notes: 'Assigned via Assign Assets modal', assignedBy: currentUser.id });
+                            if (result.success) messages.assigned.push(`${catName} (${asset.asset_tag || asset.name})`);
+                            else messages.errors.push(`${catName}: ${result.error}`);
+                        } else {
+                            messages.noStock.push(catName);
+                        }
+                    }
+                }
+
+                // Handle multi-assign additions/removals for already-checked categories
+                for (const catId of currentHWChecked) {
+                    if (!amInitialHWChecked.has(catId)) continue;
+
+                    const multiToggle = document.getElementById(`am-multi-toggle-${catId}`);
+                    const isMultiAssign = multiToggle && multiToggle.checked;
+
+                    if (isMultiAssign) {
+                        const catName = document.querySelector(`.am-hw-cb[value="${catId}"]`)?.dataset.name || 'Unknown';
+
+                        // Assign newly selected available assets
+                        const newAvailableAssets = Array.from(
+                            document.querySelectorAll(`#am-multi-assets-${catId} .am-multi-asset-cb[data-type="available"]:checked`)
+                        );
+                        for (const cb of newAvailableAssets) {
+                            const assetId = cb.value;
+                            const assetTag = cb.dataset.tag || '';
+                            const assetName = cb.dataset.name || '';
+                            const result = await Assignments.assign({ assetId, employeeId: amEmployeeId, notes: 'Multi-assigned via Assign Assets modal', assignedBy: currentUser.id });
+                            if (result.success) messages.assigned.push(`${catName} (${assetTag || assetName})`);
+                            else messages.errors.push(`${catName}: ${result.error}`);
+                        }
+
+                        // Return unchecked previously-assigned assets
+                        const uncheckedAssigned = Array.from(
+                            document.querySelectorAll(`#am-multi-assets-${catId} .am-multi-asset-cb[data-type="assigned"]:not(:checked)`)
+                        );
+                        for (const cb of uncheckedAssigned) {
+                            const assignmentId = cb.value;
+                            const assetTag = cb.dataset.tag || '';
+                            const result = await Assignments.unassign(assignmentId, 'Returned via Assign Assets modal (multi-assign)');
+                            if (result.success) messages.returned.push(`${catName} (${assetTag})`);
+                            else messages.errors.push(`Return ${catName}: ${result.error}`);
+                        }
                     }
                 }
 

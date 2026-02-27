@@ -1492,6 +1492,113 @@ body {
 }
 
 /* =============================================
+   MULTI-ASSIGN TOGGLE SWITCH
+   ============================================= */
+.multi-assign-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.multi-assign-toggle input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.multi-assign-toggle .toggle-slider {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    background: var(--slate-600);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.multi-assign-toggle .toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.multi-assign-toggle input:checked + .toggle-slider {
+    background: var(--blue-600);
+}
+
+.multi-assign-toggle input:checked + .toggle-slider::after {
+    transform: translateX(14px);
+}
+
+.multi-assign-toggle input:disabled + .toggle-slider {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.multi-assign-toggle .toggle-label {
+    font-size: 0.65rem;
+    color: var(--slate-400);
+    white-space: nowrap;
+    user-select: none;
+}
+
+.multi-assign-toggle input:checked ~ .toggle-label {
+    color: var(--blue-400);
+}
+
+.multi-assign-toggle input:disabled ~ .toggle-label {
+    opacity: 0.5;
+}
+
+.multi-assign-assets {
+    margin-top: 4px;
+    margin-left: 1.5rem;
+    padding: 6px 8px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--slate-600);
+    border-radius: 6px;
+    max-height: 140px;
+    overflow-y: auto;
+}
+
+.multi-assign-assets label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    font-size: 0.75rem;
+    color: var(--slate-300);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+}
+
+.multi-assign-assets label:hover {
+    background: rgba(51, 65, 85, 0.5);
+}
+
+.multi-assign-assets label.assigned {
+    color: var(--emerald-400, #34d399);
+}
+
+.multi-assign-assets .asset-tag {
+    font-size: 0.65rem;
+    color: var(--slate-500);
+    font-family: monospace;
+}
+
+/* =============================================
    DASHBOARD HARDWARE / SOFTWARE TOGGLE
    ============================================= */
 .dashboard-toggle {
@@ -1819,5 +1926,33 @@ body {
     .card,
     tr {
         break-inside: avoid;
+    }
+
+    /* ── Fix chart cards being cropped during print ── */
+    .card {
+        overflow: visible !important;
+    }
+
+    .card-body {
+        overflow: visible !important;
+    }
+
+    .chart-container {
+        height: auto !important;
+        min-height: 300px;
+        overflow: visible !important;
+        position: relative;
+    }
+
+    .chart-container canvas {
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 280px;
+    }
+
+    /* ── Ensure software dashboard charts print when active ── */
+    #software-dashboard:not(.hidden) .chart-container {
+        height: auto !important;
+        min-height: 300px;
     }
 }
