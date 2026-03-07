@@ -445,9 +445,13 @@
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { window.location.href = '/index.html'; return; }
 
-            const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', session.user.id).single();
+            const { data: profile } = await supabase.from('user_profiles').select('*, region:regions(id, name, code, country)').eq('id', session.user.id).single();
             currentUser = { ...session.user, ...profile };
-            
+
+            // Set Auth context so Utils.getCurrencyLabel() resolves the correct region currency
+            Auth.user = session.user;
+            Auth.profile = profile;
+
             document.getElementById('user-name').textContent = currentUser.full_name || 'User';
             document.getElementById('user-role').textContent = currentUser.role?.toUpperCase() || 'USER';
             document.getElementById('user-initials').textContent = (currentUser.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2);
@@ -1567,7 +1571,7 @@
 
                 const { data: directLicAssignments } = await supabase
                     .from('license_assignments')
-                    .select('id, license_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date)')
+                    .select('id, license_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date, cost)')
                     .eq('employee_id', employeeId);
                 (directLicAssignments || []).forEach(la => {
                     if (la.license?.category_id) {
@@ -1582,7 +1586,8 @@
                             amEmployeeLicenseByCategory[la.license.category_id] = {
                                 license_key: la.license.license_key || '',
                                 key_type: la.license.key_type || 'license_key',
-                                expiry_date: la.license.expiry_date || ''
+                                expiry_date: la.license.expiry_date || '',
+                                cost: la.license.cost ?? ''
                             };
                         }
                     }
@@ -1593,7 +1598,7 @@
                 if (empAssetIds.length > 0) {
                     const { data: legacyLic } = await supabase
                         .from('license_assignments')
-                        .select('id, license_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date)')
+                        .select('id, license_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date, cost)')
                         .in('asset_id', empAssetIds)
                         .is('employee_id', null);
                     (legacyLic || []).forEach(la => {
@@ -1611,7 +1616,8 @@
                                 amEmployeeLicenseByCategory[la.license.category_id] = {
                                     license_key: la.license.license_key || '',
                                     key_type: la.license.key_type || 'license_key',
-                                    expiry_date: la.license.expiry_date || ''
+                                    expiry_date: la.license.expiry_date || '',
+                                    cost: la.license.cost ?? ''
                                 };
                             }
                         }
@@ -1651,6 +1657,8 @@
                         const currentKey = ownLicense?.license_key || '';
                         const currentKeyType = ownLicense?.key_type || 'license_key';
                         const currentExpiry = ownLicense?.expiry_date || '';
+                        const currentCost = ownLicense?.cost ?? '';
+                        const currencyLabel = Utils.getCurrencyLabel();
                         const othersCount = amOtherUsersCount[c.id] || 0;
                         const othersNote = othersCount > 0
                             ? `<span class="text-xs text-blue-400 ml-1">· Also used by ${othersCount} other ${othersCount === 1 ? 'employee' : 'employees'}</span>`
@@ -1686,6 +1694,15 @@
                                     <div class="flex items-center gap-2">
                                         <label class="text-xs text-slate-400 flex-shrink-0">Expiry:</label>
                                         <input type="date" class="form-input text-xs py-1 flex-1" id="am-sw-expiry-${c.id}" value="${currentExpiry || ''}">
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <label class="text-xs text-slate-400 flex-shrink-0">Cost:</label>
+                                        <div class="flex items-center flex-1">
+                                            <span class="text-xs text-slate-400 px-2 py-1 bg-slate-700 border border-r-0 border-slate-600 rounded-l">${currencyLabel}</span>
+                                            <input type="number" class="form-input text-xs py-1 flex-1 rounded-l-none" id="am-sw-cost-${c.id}"
+                                                placeholder="0.00" min="0" step="0.01"
+                                                value="${currentCost !== '' ? currentCost : ''}">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1818,9 +1835,11 @@
                     // Get inline field values
                     const keyInput = document.getElementById(`am-sw-key-${swCatId}`);
                     const expiryInput = document.getElementById(`am-sw-expiry-${swCatId}`);
+                    const costInput = document.getElementById(`am-sw-cost-${swCatId}`);
                     const licenseKey = keyInput?.value?.trim() || '';
                     const keyType = keyInput?.dataset?.keyType || 'license_key';
                     const expiryDate = expiryInput?.value || '';
+                    const cost = costInput?.value?.trim() || null;
 
                     try {
                         // Find or create license for this product
@@ -1830,7 +1849,8 @@
                             regionId: regionId,
                             licenseKey: licenseKey || null,
                             keyType: keyType,
-                            expiryDate: expiryDate || null
+                            expiryDate: expiryDate || null,
+                            cost: cost
                         });
                         if (!licResult.success || !licResult.data) { messages.errors.push(`${catName}: ${licResult.error || 'Failed to create license record'}`); continue; }
 
@@ -1842,20 +1862,23 @@
                     }
                 }
 
-                // Update license key/expiry for already-assigned products if changed
+                // Update license key/expiry/cost for already-assigned products if changed
                 for (const swCatId of currentSWChecked) {
                     if (!amInitialSWChecked.has(swCatId)) continue;
                     const keyInput = document.getElementById(`am-sw-key-${swCatId}`);
                     const expiryInput = document.getElementById(`am-sw-expiry-${swCatId}`);
-                    if (!keyInput && !expiryInput) continue;
+                    const costInput = document.getElementById(`am-sw-cost-${swCatId}`);
+                    if (!keyInput && !expiryInput && !costInput) continue;
                     const licenseKey = keyInput?.value?.trim() || '';
                     const keyType = keyInput?.dataset?.keyType || 'license_key';
                     const expiryDate = expiryInput?.value || '';
+                    const costVal = costInput?.value?.trim();
                     const assignments = amSwAssignmentMap[swCatId] || [];
                     if (assignments.length > 0 && assignments[0].license_id) {
                         const updates = {};
                         if (licenseKey) { updates.license_key = licenseKey; updates.key_type = keyType; }
                         if (expiryDate) { updates.expiry_date = expiryDate; }
+                        if (costVal !== undefined && costVal !== '') { updates.cost = parseFloat(costVal); }
                         if (Object.keys(updates).length > 0) {
                             try { await Licenses.update(assignments[0].license_id, updates); } catch (err) { console.error('Error updating license:', err); }
                         }
@@ -2363,7 +2386,7 @@
                 // Existing SW assignments for this employee (direct)
                 const { data: directLicAssignments } = await supabase
                     .from('license_assignments')
-                    .select('id, license_id, asset_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date)')
+                    .select('id, license_id, asset_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date, cost)')
                     .eq('employee_id', employeeId);
                 (directLicAssignments || []).forEach(la => {
                     if (la.license?.category_id) {
@@ -2378,7 +2401,8 @@
                             rcEmployeeLicenseByCategory[la.license.category_id] = {
                                 license_key: la.license.license_key || '',
                                 key_type: la.license.key_type || 'license_key',
-                                expiry_date: la.license.expiry_date || ''
+                                expiry_date: la.license.expiry_date || '',
+                                cost: la.license.cost ?? ''
                             };
                         }
                     }
@@ -2389,7 +2413,7 @@
                 if (empAssetIds.length > 0) {
                     const { data: legacyLicAssignments } = await supabase
                         .from('license_assignments')
-                        .select('id, license_id, asset_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date)')
+                        .select('id, license_id, asset_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date, cost)')
                         .in('asset_id', empAssetIds)
                         .is('employee_id', null);
                     (legacyLicAssignments || []).forEach(la => {
@@ -2407,7 +2431,8 @@
                                 rcEmployeeLicenseByCategory[la.license.category_id] = {
                                     license_key: la.license.license_key || '',
                                     key_type: la.license.key_type || 'license_key',
-                                    expiry_date: la.license.expiry_date || ''
+                                    expiry_date: la.license.expiry_date || '',
+                                    cost: la.license.cost ?? ''
                                 };
                             }
                         }
@@ -2447,6 +2472,8 @@
                         const currentKey = ownLicense?.license_key || '';
                         const currentKeyType = ownLicense?.key_type || 'license_key';
                         const currentExpiry = ownLicense?.expiry_date || '';
+                        const currentCost = ownLicense?.cost ?? '';
+                        const currencyLabel = Utils.getCurrencyLabel();
                         const othersCount = rcOtherUsersCount[c.id] || 0;
                         const othersNote = othersCount > 0
                             ? `<span class="text-xs text-blue-400 ml-1">· Also used by ${othersCount} other ${othersCount === 1 ? 'employee' : 'employees'}</span>`
@@ -2482,6 +2509,15 @@
                                     <div class="flex items-center gap-2">
                                         <label class="text-xs text-slate-400 flex-shrink-0">Expiry:</label>
                                         <input type="date" class="form-input text-xs py-1 flex-1" id="rc-sw-expiry-${c.id}" value="${currentExpiry || ''}">
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <label class="text-xs text-slate-400 flex-shrink-0">Cost:</label>
+                                        <div class="flex items-center flex-1">
+                                            <span class="text-xs text-slate-400 px-2 py-1 bg-slate-700 border border-r-0 border-slate-600 rounded-l">${currencyLabel}</span>
+                                            <input type="number" class="form-input text-xs py-1 flex-1 rounded-l-none" id="rc-sw-cost-${c.id}"
+                                                placeholder="0.00" min="0" step="0.01"
+                                                value="${currentCost !== '' ? currentCost : ''}">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2583,17 +2619,20 @@
                     const catName = cb?.dataset.name || 'Unknown';
                     const keyInput = document.getElementById(`rc-sw-key-${swCatId}`);
                     const expiryInput = document.getElementById(`rc-sw-expiry-${swCatId}`);
+                    const costInput = document.getElementById(`rc-sw-cost-${swCatId}`);
                     const licenseKey = keyInput?.value?.trim() || '';
                     const keyType = keyInput?.dataset?.keyType || 'license_key';
                     const expiryDate = expiryInput?.value || null;
+                    const cost = costInput?.value?.trim() || null;
 
                     if (rcInitialSWChecked.has(swCatId)) {
-                        // Already assigned – update license key/expiry if changed
+                        // Already assigned – update license key/expiry/cost if changed
                         const assignments = rcSwAssignmentMap[swCatId] || [];
-                        if (assignments.length > 0 && (licenseKey || expiryDate)) {
+                        if (assignments.length > 0) {
                             const updateData = {};
                             if (licenseKey) { updateData.license_key = licenseKey; updateData.key_type = keyType; }
                             if (expiryDate) updateData.expiry_date = expiryDate;
+                            if (cost !== null && cost !== '') updateData.cost = parseFloat(cost);
                             if (Object.keys(updateData).length > 0) {
                                 await supabase.from('software_licenses').update(updateData).eq('id', assignments[0].license_id);
                             }
@@ -2608,7 +2647,8 @@
                             regionId: regionId,
                             licenseKey: licenseKey,
                             keyType: keyType,
-                            expiryDate: expiryDate
+                            expiryDate: expiryDate,
+                            cost: cost
                         });
                         if (licResult.success && licResult.data) {
                             const assignResult = await Licenses.assignToEmployee(licResult.data.id, rcEmployeeId, 'Auto-assigned from assignments form');

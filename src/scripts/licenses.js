@@ -206,7 +206,7 @@ const Licenses = {
      * @param {string} [params.expiryDate] - Expiry date (optional)
      * @returns {Promise<object>} License record
      */
-    async findOrCreateForCategory({ categoryId, categoryName, regionId, licenseKey, keyType, expiryDate }) {
+    async findOrCreateForCategory({ categoryId, categoryName, regionId, licenseKey, keyType, expiryDate, cost }) {
         try {
             // Always create a new license record per assignment.
             // Each employee gets their own license entry so keys/emails are never shared
@@ -219,6 +219,7 @@ const Licenses = {
                 license_type: expiryDate ? 'subscription' : 'perpetual',
                 seats: 9999, // Unlimited seats - quantity tracked via assignments
                 expiry_date: expiryDate || null,
+                cost: (cost !== null && cost !== undefined && cost !== '') ? parseFloat(cost) : null,
                 region_id: regionId || null,
                 is_active: true,
                 created_by: Auth.user?.id

@@ -133,6 +133,14 @@
                     <span id="exec-region-label" class="hidden ml-3 text-sm text-slate-400 font-normal"></span>
                 </div>
                 <div class="topbar-right" id="admin-actions-topbar">
+                    <div id="admin-actions-import">
+                        <button class="btn btn-secondary" onclick="showEmployeeImportInfo()">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            Import Employees
+                        </button>
+                        <input type="file" id="import-employees-file" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleImportEmployees(event)">
+                        <input type="file" id="import-employees-file-basic" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleBasicImportEmployees(event)">
+                    </div>
                     <button class="btn btn-primary" onclick="openEmployeeModal()">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         Add Employee
@@ -176,16 +184,6 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">Employees <span class="text-slate-400 font-normal ml-2" id="employees-count">(0)</span></h3>
-                        <div class="flex gap-2" id="admin-actions-import">
-                            <button class="btn btn-sm btn-secondary" onclick="showEmployeeImportInfo()">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                                </svg>
-                                Import
-                            </button>
-                            <input type="file" id="import-employees-file" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleImportEmployees(event)">
-                            <input type="file" id="import-employees-file-basic" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleBasicImportEmployees(event)">
-                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="data-table">
@@ -380,7 +378,7 @@
                 const { data: { session } } = await supabase.auth.getSession();
                 if (!session) { window.location.href = '/index.html'; return; }
 
-                const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', session.user.id).single();
+                const { data: profile } = await supabase.from('user_profiles').select('*, region:regions(id, name, code, country)').eq('id', session.user.id).single();
                 currentUser = { ...session.user, ...profile };
                 
                 // Set Auth.user for Employees module to use
@@ -700,7 +698,7 @@
                 // Get direct employee license assignments with full license data
                 const { data: directLicAssignments } = await supabase
                     .from('license_assignments')
-                    .select('id, license_id, asset_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date)')
+                    .select('id, license_id, asset_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date, cost)')
                     .eq('employee_id', employeeId);
 
                 (directLicAssignments || []).forEach(la => {
@@ -716,12 +714,13 @@
                             employee_id: la.employee_id
                         });
                         initialSWChecked.add(la.license.category_id);
-                        // Store the employee's own license key/type/expiry
+                        // Store the employee's own license key/type/expiry/cost
                         if (!employeeLicenseByCategory[la.license.category_id]) {
                             employeeLicenseByCategory[la.license.category_id] = {
                                 license_key: la.license.license_key || '',
                                 key_type: la.license.key_type || 'license_key',
-                                expiry_date: la.license.expiry_date || ''
+                                expiry_date: la.license.expiry_date || '',
+                                cost: la.license.cost ?? ''
                             };
                         }
                     }
@@ -739,7 +738,7 @@
                 if (assetIds.length > 0) {
                     const { data: legacyLicAssignments } = await supabase
                         .from('license_assignments')
-                        .select('id, license_id, asset_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date)')
+                        .select('id, license_id, asset_id, employee_id, license:software_licenses(id, name, category_id, license_key, key_type, expiry_date, cost)')
                         .in('asset_id', assetIds)
                         .is('employee_id', null);
 
@@ -762,7 +761,8 @@
                                 employeeLicenseByCategory[la.license.category_id] = {
                                     license_key: la.license.license_key || '',
                                     key_type: la.license.key_type || 'license_key',
-                                    expiry_date: la.license.expiry_date || ''
+                                    expiry_date: la.license.expiry_date || '',
+                                    cost: la.license.cost ?? ''
                                 };
                             }
                         }
@@ -804,6 +804,8 @@
                 const currentKey = ownLicense?.license_key || '';
                 const currentKeyType = ownLicense?.key_type || 'license_key';
                 const currentExpiry = ownLicense?.expiry_date || '';
+                const currentCost = ownLicense?.cost ?? '';
+                const currencyLabel = Utils.getCurrencyLabel();
                 const othersCount = otherUsersCount[c.id] || 0;
                 const othersNote = othersCount > 0
                     ? `<span class="text-xs text-blue-400 ml-1">· Also used by ${othersCount} other ${othersCount === 1 ? 'employee' : 'employees'}</span>`
@@ -839,6 +841,15 @@
                             <div class="flex items-center gap-2">
                                 <label class="text-xs text-slate-400 flex-shrink-0">Expiry:</label>
                                 <input type="date" class="form-input text-xs py-1 flex-1" id="sw-expiry-${c.id}" value="${currentExpiry}">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-slate-400 flex-shrink-0">Cost:</label>
+                                <div class="flex items-center flex-1">
+                                    <span class="text-xs text-slate-400 px-2 py-1 bg-slate-700 border border-r-0 border-slate-600 rounded-l">${currencyLabel}</span>
+                                    <input type="number" class="form-input text-xs py-1 flex-1 rounded-l-none" id="sw-cost-${c.id}"
+                                        placeholder="0.00" min="0" step="0.01"
+                                        value="${currentCost !== '' ? currentCost : ''}">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1004,9 +1015,11 @@
                 // Get inline field values
                 const keyInput = document.getElementById(`sw-key-${swCatId}`);
                 const expiryInput = document.getElementById(`sw-expiry-${swCatId}`);
+                const costInput = document.getElementById(`sw-cost-${swCatId}`);
                 const licenseKey = keyInput?.value?.trim() || '';
                 const keyType = keyInput?.dataset?.keyType || 'license_key';
                 const expiryDate = expiryInput?.value || '';
+                const cost = costInput?.value?.trim() || null;
 
                 try {
                     // Find or create the license record for this product
@@ -1016,7 +1029,8 @@
                         regionId: regionId,
                         licenseKey: licenseKey || null,
                         keyType: keyType,
-                        expiryDate: expiryDate || null
+                        expiryDate: expiryDate || null,
+                        cost: cost
                     });
 
                     if (!licResult.success) {
@@ -1036,17 +1050,19 @@
                 }
             }
 
-            // For already-checked categories, update license key/expiry if changed
+            // For already-checked categories, update license key/expiry/cost if changed
             for (const swCatId of currentChecked) {
                 if (!initialSWChecked.has(swCatId)) continue;
                 
                 const keyInput = document.getElementById(`sw-key-${swCatId}`);
                 const expiryInput = document.getElementById(`sw-expiry-${swCatId}`);
-                if (!keyInput && !expiryInput) continue;
+                const costInput = document.getElementById(`sw-cost-${swCatId}`);
+                if (!keyInput && !expiryInput && !costInput) continue;
 
                 const licenseKey = keyInput?.value?.trim() || '';
                 const keyType = keyInput?.dataset?.keyType || 'license_key';
                 const expiryDate = expiryInput?.value || '';
+                const costVal = costInput?.value?.trim();
 
                 // Find the existing license for this category
                 const assignments = swAssignmentMap[swCatId] || [];
@@ -1054,6 +1070,7 @@
                     const updates = {};
                     if (licenseKey) { updates.license_key = licenseKey; updates.key_type = keyType; }
                     if (expiryDate) { updates.expiry_date = expiryDate; }
+                    if (costVal !== undefined && costVal !== '') { updates.cost = parseFloat(costVal); }
                     if (Object.keys(updates).length > 0) {
                         try {
                             await Licenses.update(assignments[0].license_id, updates);
