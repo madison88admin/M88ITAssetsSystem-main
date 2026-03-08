@@ -1244,7 +1244,7 @@ const Import = {
      * @returns {Promise<string|null>} 'basic' | 'detailed' | null (cancelled)
      */
     showImportChoice(type) {
-        const titleLabel = type === 'assignments' ? 'Assignments' : type === 'assets' ? 'IT Equipments' : 'Employees';
+        const titleLabel = type === 'assignments' ? 'Assignments' : type === 'assets' ? 'IT Equipment' : 'Employees';
         return new Promise((resolve) => {
             const html = `
                 <div class="import-choice-overlay" id="import-choice-overlay">
@@ -1559,7 +1559,7 @@ const Import = {
      * Create the scanning overlay DOM
      */
     _createScanOverlay(type, columnDefs) {
-        const titleLabel = type === 'assignments' ? 'Assignments' : type === 'assets' ? 'IT Equipments' : 'Employees';
+        const titleLabel = type === 'assignments' ? 'Assignments' : type === 'assets' ? 'IT Equipment' : 'Employees';
 
         const itemsHtml = columnDefs.map((col, i) => `
             <div class="basic-import-scan-item" data-index="${i}">

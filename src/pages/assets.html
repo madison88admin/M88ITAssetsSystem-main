@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IT Equipments - Madison 88 IT Asset Management</title>
+    <title>IT Equipment - Madison 88 IT Asset Management</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/images/favicon.png">
@@ -183,7 +183,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
                     </button>
-                    <h2 class="text-lg font-semibold text-white">IT Equipments</h2>
+                    <h2 class="text-lg font-semibold text-white">IT Equipment</h2>
                     <span id="exec-region-label" class="hidden ml-3 text-sm text-slate-400 font-normal"></span>
                 </div>
                 <div class="topbar-right" id="admin-actions-topbar">
@@ -208,7 +208,7 @@
             <div class="page-content">
                 <!-- Page Header -->
                 <div class="page-header">
-                    <h1 class="page-title">IT Equipments Management</h1>
+                    <h1 class="page-title">IT Equipment Management</h1>
                     <p class="page-subtitle">Manage all IT equipment and assets</p>
                 </div>
 
@@ -266,7 +266,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            IT Equipments List
+                            IT Equipment List
                             <span class="text-slate-400 font-normal ml-2" id="assets-count">(0 items)</span>
                         </h3>
                     </div>
@@ -286,7 +286,7 @@
                             <tbody id="assets-table-body">
                                 <tr>
                                     <td colspan="7" class="text-center py-8 text-slate-400">
-                                        Loading IT equipments...
+                                        Loading IT equipment...
                                     </td>
                                 </tr>
                             </tbody>
@@ -297,7 +297,7 @@
                     <div class="card-footer">
                         <div class="flex items-center justify-between">
                             <p class="text-sm text-slate-400" id="pagination-info">
-                                Showing 0 of 0 IT equipments
+                                Showing 0 of 0 IT equipment
                             </p>
                             <div class="flex gap-2" id="pagination-buttons">
                                 <!-- Pagination buttons will be inserted here -->
@@ -742,7 +742,7 @@
                 
                 document.getElementById('assets-count').textContent = `(${count || 0} items)`;
                 document.getElementById('pagination-info').textContent = 
-                    `Showing ${from + 1}-${Math.min(to + 1, count || 0)} of ${count || 0} IT Equipments`;
+                    `Showing ${from + 1}-${Math.min(to + 1, count || 0)} of ${count || 0} IT Equipment`;
 
                 if (!assets?.length) {
                     tableBody.innerHTML = `

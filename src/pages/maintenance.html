@@ -539,7 +539,7 @@
             // Query assets directly, excluding decommissioned, lost-under-investigation, and already in-progress maintenance
             let assetQ = supabase
                 .from('assets')
-                .select('id, asset_tag, name')
+                .select('id, asset_tag, name, serial_number')
                 .neq('status', 'decommissioned');
             const regionId = Auth.getRegionId();
             if (regionId) assetQ = assetQ.eq('region_id', regionId);
@@ -548,7 +548,7 @@
             const filtered = (assets || []).filter(a => !lostAssetIds.has(a.id) && !maintAssetIds.has(a.id));
             const select = document.getElementById('maint-asset');
             select.innerHTML = '<option value="">Select an asset</option>' +
-                filtered.map(a => `<option value="${a.id}">${a.name} (${a.asset_tag})</option>`).join('');
+                filtered.map(a => `<option value="${a.id}">${a.serial_number || 'No S/N'} - ${a.name} (${a.asset_tag})</option>`).join('');
         }
 
         async function loadDamagedAssets() {
@@ -679,11 +679,11 @@
             if (record.asset_id) {
                 const select = document.getElementById('maint-asset');
                 if (!select.querySelector(`option[value="${record.asset_id}"]`)) {
-                    const { data: asset } = await supabase.from('assets').select('id, asset_tag, name').eq('id', record.asset_id).single();
+                    const { data: asset } = await supabase.from('assets').select('id, asset_tag, name, serial_number').eq('id', record.asset_id).single();
                     if (asset) {
                         const opt = document.createElement('option');
                         opt.value = asset.id;
-                        opt.textContent = `${asset.name} (${asset.asset_tag})`;
+                        opt.textContent = `${asset.serial_number || 'No S/N'} - ${asset.name} (${asset.asset_tag})`;
                         select.appendChild(opt);
                     }
                 }
@@ -737,11 +737,11 @@
             if (record.asset_id) {
                 const select = document.getElementById('maint-asset');
                 if (!select.querySelector(`option[value="${record.asset_id}"]`)) {
-                    const { data: asset } = await supabase.from('assets').select('id, asset_tag, name').eq('id', record.asset_id).single();
+                    const { data: asset } = await supabase.from('assets').select('id, asset_tag, name, serial_number').eq('id', record.asset_id).single();
                     if (asset) {
                         const opt = document.createElement('option');
                         opt.value = asset.id;
-                        opt.textContent = `${asset.name} (${asset.asset_tag})`;
+                        opt.textContent = `${asset.serial_number || 'No S/N'} - ${asset.name} (${asset.asset_tag})`;
                         select.appendChild(opt);
                     }
                 }

@@ -723,7 +723,7 @@
                 .eq('status', 'under_investigation');
             const lostAssetIds = new Set((activeLost || []).map(r => r.asset_id));
 
-            let assetQ = supabase.from('assets').select('id, asset_tag, name');
+            let assetQ = supabase.from('assets').select('id, asset_tag, name, serial_number');
             const regionId = currentUser.region_id || null;
             if (regionId) assetQ = assetQ.eq('region_id', regionId);
             const { data } = await assetQ.order('asset_tag');
@@ -731,7 +731,7 @@
 
             const select = document.getElementById('asset-select');
             select.innerHTML = '<option value="">Select Asset</option>' +
-                assets.map(a => `<option value="${a.id}">${a.asset_tag} - ${a.name}</option>`).join('');
+                assets.map(a => `<option value="${a.id}">${a.serial_number || 'No S/N'} - ${a.name} (${a.asset_tag})</option>`).join('');
         }
 
         async function loadEmployees() {
@@ -815,11 +815,11 @@
                 if (record.asset_id) {
                     const select = document.getElementById('asset-select');
                     if (!select.querySelector(`option[value="${record.asset_id}"]`)) {
-                        const { data: asset } = await supabase.from('assets').select('id, asset_tag, name').eq('id', record.asset_id).single();
+                        const { data: asset } = await supabase.from('assets').select('id, asset_tag, name, serial_number').eq('id', record.asset_id).single();
                         if (asset) {
                             const opt = document.createElement('option');
                             opt.value = asset.id;
-                            opt.textContent = `${asset.asset_tag} - ${asset.name}`;
+                            opt.textContent = `${asset.serial_number || 'No S/N'} - ${asset.name} (${asset.asset_tag})`;
                             select.appendChild(opt);
                         }
                     }
