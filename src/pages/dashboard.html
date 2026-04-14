@@ -642,7 +642,6 @@
         let currentDashboardView = 'hardware'; // 'hardware' or 'software'
         let softwareDataLoaded = false; // track if software data has been loaded at least once
         let selectedMonthKey = null; // null = all months, or 'YYYY-MM' string
-        const DASHBOARD_TASK_TIMEOUT_MS = 15000;
         
         /**
          * Apply region filter to a Supabase query based on current selection
@@ -682,24 +681,6 @@
             if (!range) return query;
             return query.gte(dateColumn, range.startDate).lte(dateColumn, range.endDate);
         }
-
-        function withTimeout(promise, timeoutMs, label) {
-            return new Promise((resolve, reject) => {
-                const timer = setTimeout(() => {
-                    reject(new Error(`${label} timed out after ${timeoutMs}ms`));
-                }, timeoutMs);
-
-                promise
-                    .then((result) => {
-                        clearTimeout(timer);
-                        resolve(result);
-                    })
-                    .catch((error) => {
-                        clearTimeout(timer);
-                        reject(error);
-                    });
-            });
-        }
         
         // Chart instances (need to be destroyed before recreating)
         let statusChartInstance = null;
@@ -715,16 +696,8 @@
          * Initialize the dashboard
          */
         async function init() {
-            let loadingGuard = null;
             try {
                 // console.log('🚀 Starting dashboard init...');
-                loadingGuard = setTimeout(() => {
-                    if (!app.classList.contains('hidden')) return;
-                    console.warn('Dashboard init guard triggered. Showing app shell to avoid blocking UI.');
-                    loadingScreen.classList.add('hidden');
-                    app.classList.remove('hidden');
-                    showToast('Dashboard is taking longer than expected. Some widgets may load slowly.', 'warning');
-                }, DASHBOARD_TASK_TIMEOUT_MS);
                 
                 // Check authentication
                 const { data: { session } } = await supabase.auth.getSession();
@@ -736,33 +709,31 @@
                 
                 // console.log('✅ Session found');
 
-                // Prefer profile data already loaded by Auth bootstrap when available.
-                let profile = window.Auth?.profile || null;
-
-                // Fetch profile from DB if Auth bootstrap has not populated it yet.
-                const { data: fetchedProfile, error: profileError } = await supabase
+                // Get user profile
+                const { data: profile, error: profileError } = await supabase
                     .from('user_profiles')
                     .select('*')
                     .eq('id', session.user.id)
-                    .maybeSingle();
+                    .single();
 
-                if (fetchedProfile) {
-                    profile = fetchedProfile;
+                if (profileError) {
+                    console.warn('No profile found, creating one...');
+                    // Create profile if it doesn't exist
+                    const { data: newProfile } = await supabase
+                        .from('user_profiles')
+                        .insert([{
+                            id: session.user.id,
+                            email: session.user.email,
+                            full_name: session.user.email.split('@')[0],
+                            role: 'admin'
+                        }])
+                        .select()
+                        .single();
+                    
+                    currentUser = { ...session.user, ...newProfile };
+                } else {
+                    currentUser = { ...session.user, ...profile };
                 }
-
-                if (profileError && profileError.code !== 'PGRST116') {
-                    console.warn('Profile fetch warning:', profileError);
-                }
-
-                const safeProfile = profile || {
-                    id: session.user.id,
-                    email: session.user.email,
-                    full_name: session.user.user_metadata?.full_name || session.user.email,
-                    role: 'viewer',
-                    region_id: null
-                };
-
-                currentUser = { ...session.user, ...safeProfile };
 
                 // Update UI with user info
                 updateUserInfo(currentUser);
@@ -814,8 +785,6 @@
                         <button onclick="location.reload()" class="btn btn-primary">Retry</button>
                     </div>
                 `;
-            } finally {
-                if (loadingGuard) clearTimeout(loadingGuard);
             }
         }
 
@@ -964,32 +933,24 @@
          */
         async function loadDashboardData() {
             try {
-                const runTask = async (label, taskFn) => {
-                    try {
-                        await withTimeout(taskFn(), DASHBOARD_TASK_TIMEOUT_MS, label);
-                    } catch (taskError) {
-                        console.error(`${label} failed:`, taskError);
-                    }
-                };
-
                 if (currentDashboardView === 'hardware') {
                     // Load hardware data in parallel for speed
                     await Promise.all([
-                        runTask('loadStats', loadStats),
-                        runTask('loadCharts', loadCharts),
-                        runTask('loadAcquisitionTrends', loadAcquisitionTrends),
-                        runTask('loadHeatmap', loadHeatmap),
-                        runTask('loadAlerts', loadAlerts),
-                        runTask('loadExecutiveSummary', loadExecutiveSummary)
+                        loadStats(),
+                        loadCharts(),
+                        loadAcquisitionTrends(),
+                        loadHeatmap(),
+                        loadAlerts(),
+                        loadExecutiveSummary()
                     ]);
                 } else {
                     // Load software data in parallel
                     await Promise.all([
-                        runTask('loadSoftwareStats', loadSoftwareStats),
-                        runTask('loadSoftwareCharts', loadSoftwareCharts),
-                        runTask('loadSoftwareExpiryTrends', loadSoftwareExpiryTrends),
-                        runTask('loadSoftwareAlerts', loadSoftwareAlerts),
-                        runTask('loadSoftwareHeatmap', loadSoftwareHeatmap)
+                        loadSoftwareStats(),
+                        loadSoftwareCharts(),
+                        loadSoftwareExpiryTrends(),
+                        loadSoftwareAlerts(),
+                        loadSoftwareHeatmap()
                     ]);
                     softwareDataLoaded = true;
                 }
@@ -2770,10 +2731,7 @@
         async function fetchExchangeRates() {
             if (exchangeRatesLoaded && exchangeRates) return exchangeRates;
             try {
-                const controller = new AbortController();
-                const fetchTimer = setTimeout(() => controller.abort(), 7000);
-                const resp = await fetch('https://open.er-api.com/v6/latest/USD', { signal: controller.signal });
-                clearTimeout(fetchTimer);
+                const resp = await fetch('https://open.er-api.com/v6/latest/USD');
                 const json = await resp.json();
                 if (json.result === 'success' && json.rates) {
                     exchangeRates = json.rates;
