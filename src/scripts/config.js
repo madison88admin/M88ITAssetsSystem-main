@@ -32,8 +32,11 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 }
 
 // Create and export the Supabase client
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    db: {
+        schema: 'm88_it_assets'
+    }
+});
 // Also make available globally for non-module scripts
 window.supabase = supabase;
 
