@@ -705,7 +705,9 @@
             tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">Loading...</td></tr>';
 
             try {
+
                 let query = supabase
+                    .schema('public')
                     .from('v_assets_full')
                     .select('*', { count: 'exact' });
 
@@ -1437,9 +1439,11 @@
                 showLoadingModal('Exporting Assets', 'Preparing data for export...');
                 
                 let exportQuery = supabase
+                    .schema('public')
                     .from('v_assets_full')
                     .select('*')
                     .order('created_at', { ascending: false });
+
                 const regionId = Auth.getRegionId();
                 if (regionId) exportQuery = exportQuery.eq('region_id', regionId);
                 const { data: assets } = await exportQuery;

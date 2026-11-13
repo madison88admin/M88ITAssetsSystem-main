@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Madison 88 IT Asset Management</title>
-    
+
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/images/favicon.png">
-    
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Early auth hash redirect (must run BEFORE module scripts) -->
     <script>
     (function() {
@@ -32,7 +32,7 @@
 
     <!-- Custom Styles (includes Tailwind via build) -->
     <link rel="stylesheet" href="../styles/styles.css">
-    
+
     <!-- Application Modules -->
     <script type="module" src="../scripts/utils.js"></script>
     <script type="module" src="../scripts/audit.js"></script>
@@ -56,7 +56,7 @@
     <div class="app-layout hidden" id="app">
         <!-- Sidebar Overlay (Mobile) -->
         <div id="sidebar-overlay" class="hidden" onclick="toggleSidebar()"></div>
-        
+
         <!-- =========================================
              SIDEBAR
              ========================================= -->
@@ -68,7 +68,7 @@
                     <h1>IT Equipment Inventory Management System</h1>
                 </a>
             </div>
-            
+
             <!-- Navigation -->
             <nav class="sidebar-nav">
                 <!-- Main -->
@@ -81,7 +81,7 @@
                         Dashboard
                     </a>
                 </div>
-                
+
                 <!-- Asset Management -->
                 <div class="nav-section" id="asset-management-nav">
                     <p class="nav-section-title">Asset Management</p>
@@ -110,7 +110,7 @@
                         Assignments
                     </a>
                 </div>
-                
+
                 <!-- Tracking -->
                 <div class="nav-section" id="tracking-nav">
                     <p class="nav-section-title">Asset Tracking</p>
@@ -128,7 +128,7 @@
                         Lost Assets
                     </a>
                 </div>
-                
+
                 <!-- Reports -->
                 <div class="nav-section" id="reports-nav">
                     <p class="nav-section-title">Reports</p>
@@ -145,7 +145,7 @@
                         Audit Logs
                     </a>
                 </div>
-                
+
                 <!-- Admin (Role restricted) -->
                 <div class="nav-section" id="admin-nav">
                     <p class="nav-section-title">Administration</p>
@@ -163,7 +163,7 @@
                     </a>
                 </div>
             </nav>
-            
+
             <!-- User Info -->
             <div class="sidebar-footer">
                 <div class="flex items-center gap-3">
@@ -628,11 +628,11 @@
     <script type="module">
         import { supabase } from '../scripts/config.js';
         import { showToast } from '../scripts/components.js';
-        
+
         // DOM Elements
         const loadingScreen = document.getElementById('loading-screen');
         const app = document.getElementById('app');
-        
+
         // Global state
         let currentUser = null;
         let selectedRegionId = null; // null = all regions (for executive) or all assigned regions (for exec+admin)
@@ -642,7 +642,7 @@
         let currentDashboardView = 'hardware'; // 'hardware' or 'software'
         let softwareDataLoaded = false; // track if software data has been loaded at least once
         let selectedMonthKey = null; // null = all months, or 'YYYY-MM' string
-        
+
         /**
          * Apply region filter to a Supabase query based on current selection
          */
@@ -652,7 +652,7 @@
             }
             return query;
         }
-        
+
         /**
          * Check if a region_id matches the current region filter (for client-side filtering)
          */
@@ -681,7 +681,7 @@
             if (!range) return query;
             return query.gte(dateColumn, range.startDate).lte(dateColumn, range.endDate);
         }
-        
+
         // Chart instances (need to be destroyed before recreating)
         let statusChartInstance = null;
         let categoryChartInstance = null;
@@ -707,15 +707,15 @@
                         showToast('Dashboard is taking longer than expected. Some widgets may load slowly.', 'warning');
                     }
                 }, 15000);
-                
+
                 // Check authentication
                 const { data: { session } } = await supabase.auth.getSession();
-                
+
                 if (!session) {
                     window.location.href = '/index.html';
                     return;
                 }
-                
+
                 // console.log('✅ Session found');
 
                 // Get user profile
@@ -811,10 +811,10 @@
             const fullName = user.full_name || 'User';
             document.getElementById('user-name').textContent = fullName;
             document.getElementById('user-role').textContent = user.role?.replace('_', ' ').toUpperCase() || 'USER';
-            
+
             // Update welcome message
             document.getElementById('welcome-user-name').textContent = fullName;
-            
+
             // Set initials
             const initials = (fullName)
                 .split(' ')
@@ -836,12 +836,12 @@
             if (currentUser.isExecAdmin || currentUser.role === 'executive') {
                 // Executive & Exec+Admin: show region dropdown with ALL regions
                 const { data: regions } = await supabase.from('regions').select('*').eq('is_active', true).order('name');
-                
+
                 if (regions) {
                     // Build region lookup map (region_id → region object)
                     regions.forEach(r => { regionsMap[r.id] = r; });
                 }
-                
+
                 if (regionSelector && regions) {
                     // Populate options
                     regions.forEach(r => {
@@ -852,15 +852,15 @@
                     });
                     regionSelector.classList.remove('hidden');
                 }
-                
+
                 // Default: show all regions
                 selectedRegionId = null;
                 if (dashboardTitle) dashboardTitle.textContent = 'Madison88 IT Assets - All Regions';
-                
+
             } else if (currentUser.role === 'admin' || currentUser.role === 'it_staff') {
                 // Admin / IT Staff: show their region label
                 selectedRegionId = currentUser.region_id || null;
-                
+
                 if (currentUser.region_id && regionLabel) {
                     // Fetch region (full row so regionsMap has the code for colour lookup)
                     const { data: region } = await supabase.from('regions').select('*').eq('id', currentUser.region_id).single();
@@ -929,7 +929,7 @@
         window.handleRegionChange = async function(regionId) {
             selectedRegionId = regionId || null;
             const dashboardTitle = document.getElementById('dashboard-title');
-            
+
             if (!regionId) {
                 if (dashboardTitle) dashboardTitle.textContent = 'Madison88 IT Assets - All Regions';
             } else {
@@ -939,7 +939,7 @@
                     dashboardTitle.textContent = selectedOption.textContent;
                 }
             }
-            
+
             // Reload dashboard data with new region filter
             await loadDashboardData();
         };
@@ -1031,7 +1031,7 @@
                 const statusOrder = ['available', 'assigned', 'under_repair', 'lost', 'damaged', 'decommissioned'];
                 const statusColorMap = {
                     'available': '#22c55e',     // green (matches Available Assets card)
-                    'assigned': '#3b82f6',      // blue (matches Assigned card) 
+                    'assigned': '#3b82f6',      // blue (matches Assigned card)
                     'under_repair': '#eab308',  // yellow (matches Under Repair card)
                     'lost': '#ef4444',          // red (matches Issues card)
                     'damaged': '#ef4444',       // red (matches Issues card)
@@ -1049,19 +1049,19 @@
                 // Count statuses and build category breakdown
                 const statusCounts = {};
                 const statusCategoryBreakdown = {};
-                
+
                 (statusData || []).forEach(asset => {
                     const status = asset.status;
                     const categoryName = asset.category?.name || 'Uncategorized';
-                    
+
                     // Count status totals
                     statusCounts[status] = (statusCounts[status] || 0) + 1;
-                    
+
                     // Build category breakdown per status
                     if (!statusCategoryBreakdown[status]) {
                         statusCategoryBreakdown[status] = {};
                     }
-                    statusCategoryBreakdown[status][categoryName] = 
+                    statusCategoryBreakdown[status][categoryName] =
                         (statusCategoryBreakdown[status][categoryName] || 0) + 1;
                 });
 
@@ -1142,21 +1142,21 @@
                                         const status = sortedStatuses[context.dataIndex];
                                         const value = context.parsed;
                                         const percentage = ((value / totalAssets) * 100).toFixed(1);
-                                        
+
                                         // Get categories for this status
                                         const categories = statusCategoryBreakdown[status] || {};
-                                        
+
                                         // Sort categories by count (highest first)
                                         const sortedCategories = Object.entries(categories)
                                             .sort((a, b) => b[1] - a[1]);
-                                        
+
                                         // Build the tooltip lines
                                         const lines = ['  Asset Categories:'];
                                         sortedCategories.forEach(([categoryName, count]) => {
                                             lines.push(`    ${categoryName}: ${count}`);
                                         });
                                         lines.push(`  Percentage: ${percentage}%`);
-                                        
+
                                         return lines;
                                     }
                                 }
@@ -1170,7 +1170,7 @@
                             const chartArea = chart.chartArea;
                             const centerX = (chartArea.left + chartArea.right) / 2;
                             const centerY = (chartArea.top + chartArea.bottom) / 2;
-                            
+
                             ctx.restore();
                             const fontSize = ((chartArea.bottom - chartArea.top) / 114).toFixed(2);
                             ctx.font = fontSize + "em sans-serif";
@@ -1180,13 +1180,13 @@
 
                             const text = totalAssets.toString();
                             ctx.fillText(text, centerX, centerY - 10);
-                            
+
                             // Add "Total Assets" subtitle
                             ctx.font = (fontSize / 2) + "em sans-serif";
                             ctx.fillStyle = "#94a3b8";
                             const subtitle = "Total Assets";
                             ctx.fillText(subtitle, centerX, centerY + 20);
-                            
+
                             ctx.save();
                         }
                     }]
@@ -1381,7 +1381,7 @@
                 // Get assets from the last 12 months
                 const twelveMonthsAgo = new Date();
                 twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-                
+
                 // Fetch all three data sources in parallel
                 let trendQuery = supabase
                     .from('assets')
@@ -1420,7 +1420,7 @@
                 const lostCounts = {};
                 const maintCounts = {};
                 const now = new Date();
-                
+
                 for (let i = 11; i >= 0; i--) {
                     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
                     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -1786,7 +1786,7 @@
                             <tr class="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
                                 <td class="py-3 px-4 font-medium text-slate-200">${row.category}</td>
                                 <td class="text-center py-2 px-2">
-                                    <div class="inline-block px-3 py-2 rounded ${getCellColor(row.available, maxAvailable)} min-w-[60px]" 
+                                    <div class="inline-block px-3 py-2 rounded ${getCellColor(row.available, maxAvailable)} min-w-[60px]"
                                          title="Available: ${row.available}">
                                         ${row.available}
                                     </div>
@@ -1877,9 +1877,12 @@
                 // Check warranty expiring (with error handling)
                 try {
                     // Note: View v_warranty_expiring may not exist yet
-                    let wQuery = supabase
+                   let wQuery = supabase
+                        .schema('public')
                         .from('v_warranty_expiring')
                         .select('*');
+
+
                     wQuery = applyRegionFilter(wQuery);
                     const { data: warrantyExpiring } = await wQuery.limit(3);
 
@@ -1900,9 +1903,11 @@
                 // Check refresh due (with error handling)
                 try {
                     // Note: View v_assets_refresh_due may not exist yet
-                    let rQuery = supabase
+                   let rQuery = supabase
+                        .schema('public')
                         .from('v_assets_refresh_due')
                         .select('*');
+
                     rQuery = applyRegionFilter(rQuery);
                     const { data: refreshDue } = await rQuery.limit(3);
 
@@ -1996,7 +2001,7 @@
                 const hasAction = alert.link || alert.onclick;
                 const clickable = hasAction && canNav;
                 const clickAttr = clickable
-                    ? (alert.onclick ? `onclick="${alert.onclick}"` : `onclick="window.location.href='${alert.link}'"`) 
+                    ? (alert.onclick ? `onclick="${alert.onclick}"` : `onclick="window.location.href='${alert.link}'"`)
                     : '';
                 const cursorClass = clickable ? 'cursor-pointer' : '';
                 const tooltip = (!canNav && hasAction) ? `title="Switch to your assigned region to access this"` : '';

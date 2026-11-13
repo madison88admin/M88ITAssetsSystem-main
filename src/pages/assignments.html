@@ -532,7 +532,7 @@
             const regionId = currentUser.region_id || null;
 
             // Active assignments (region-scoped via view)
-            let activeQ = supabase.from('v_asset_assignments_full').select('*', { count: 'exact', head: true }).is('returned_date', null);
+            let activeQ = supabase.schema('public').from('v_asset_assignments_full').select('*', { count: 'exact', head: true }).is('returned_date', null);
             if (regionId) activeQ = activeQ.eq('region_id', regionId);
             const { count: active } = await activeQ;
             document.getElementById('stat-active').textContent = active || 0;
@@ -545,8 +545,7 @@
 
             // Returned this month
             const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-            let retQ = supabase.from('v_asset_assignments_full').select('*', { count: 'exact', head: true }).not('returned_date', 'is', null).gte('returned_date', startOfMonth);
-            if (regionId) retQ = retQ.eq('region_id', regionId);
+            let retQ = supabase.schema('public').from('v_asset_assignments_full').select('*', { count: 'exact', head: true }).not('returned_date', 'is', null).gte('returned_date', startOfMonth);            if (regionId) retQ = retQ.eq('region_id', regionId);
             const { count: returned } = await retQ;
             document.getElementById('stat-returned').textContent = returned || 0;
 
